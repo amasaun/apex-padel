@@ -49,8 +49,6 @@ export default function Matches() {
 
   // Sort and filter matches
   const filteredMatches = useMemo(() => {
-    const now = new Date();
-
     let result = [...matches].sort((a, b) => {
       const dateTimeA = new Date(`${a.date}T${a.time}`).getTime();
       const dateTimeB = new Date(`${b.date}T${b.time}`).getTime();

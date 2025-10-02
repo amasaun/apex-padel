@@ -177,8 +177,6 @@ export default function MatchDetail() {
   };
 
   const matchStatus = match ? getMatchStatus(match.date, match.time, match.duration) : 'upcoming';
-  // Only allow booking for upcoming matches with available slots
-  const canBook = matchStatus === 'upcoming' && match?.available_slots > 0;
 
   const handleBookSlot = async () => {
     if (!currentUser || !match) return;
