@@ -13,7 +13,6 @@ export default function Matches() {
   const [selectedDate, setSelectedDate] = useState<string>('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [activeShareMenu, setActiveShareMenu] = useState<string | null>(null);
-  const [activeCalendarMenu, setActiveCalendarMenu] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'agenda' | 'calendar'>('agenda');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showMyMatchesOnly, setShowMyMatchesOnly] = useState(false);
