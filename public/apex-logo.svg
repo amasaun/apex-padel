@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" fill="none">
+  <!-- Main A shape with padel player -->
+  <g fill="#E63946">
+    <!-- Left triangle of A -->
+    <path d="M300 620 L420 260 L500 450 L380 620 Z"/>
+
+    <!-- Right triangle of A -->
+    <path d="M580 620 L500 450 L620 260 L700 620 Z"/>
+
+    <!-- Top triangle of A -->
+    <path d="M420 260 L500 100 L620 260 L500 450 Z"/>
+
+    <!-- Person figure in center -->
+    <circle cx="500" cy="490" r="40" fill="white"/>
+    <path d="M460 530 Q460 560 480 580 L460 660 L480 660 L500 590 L520 660 L540 660 L520 580 Q540 560 540 530 L500 520 Z" fill="white"/>
+
+    <!-- Padel racket -->
+    <g transform="translate(380, 420)">
+      <circle cx="0" cy="0" r="25" fill="white" stroke="#E63946" stroke-width="3"/>
+      <circle cx="-5" cy="-8" r="2" fill="#E63946"/>
+      <circle cx="5" cy="-8" r="2" fill="#E63946"/>
+      <circle cx="-5" cy="0" r="2" fill="#E63946"/>
+      <circle cx="5" cy="0" r="2" fill="#E63946"/>
+      <circle cx="-5" cy="8" r="2" fill="#E63946"/>
+      <circle cx="5" cy="8" r="2" fill="#E63946"/>
+      <line x1="0" y1="25" x2="0" y2="50" stroke="white" stroke-width="4"/>
+    </g>
+
+    <!-- Ball -->
+    <circle cx="592" cy="275" r="18" fill="#E63946"/>
+  </g>
+
+  <!-- Text -->
+  <text x="500" y="780" font-family="Arial, sans-serif" font-size="120" font-weight="bold" text-anchor="middle" fill="#E63946">
+    APEX PADEL
+  </text>
+</svg>
