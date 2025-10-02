@@ -48,6 +48,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
     match.bookings.map((b) => b.user_id)
   );
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -138,6 +139,20 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
       }
     }
   };
+
+  // Get currently booked players
+  const bookedPlayers = allUsers.filter((user) => selectedPlayers.includes(user.id));
+
+  // Filter available users based on search query (excluding already selected players)
+  const filteredAvailableUsers = allUsers.filter((user) => {
+    if (selectedPlayers.includes(user.id)) return false;
+    if (!searchQuery) return false;
+    const query = searchQuery.toLowerCase();
+    return (
+      user.name.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query)
+    );
+  });
 
   const handleClose = () => {
     setErrors({});
@@ -278,7 +293,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {num} Players
+                  {num}
                 </button>
               ))}
             </div>
@@ -317,55 +332,103 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
               Manage Players ({selectedPlayers.length}/{formData.maxPlayers})
             </label>
             {errors.players && <p className="mb-2 text-sm text-red-600">{errors.players}</p>}
-            <div className="border border-gray-200 rounded-lg p-4 space-y-2 max-h-64 overflow-y-auto">
-              {allUsers.map((user) => {
-                const isSelected = selectedPlayers.includes(user.id);
-                const canSelect = selectedPlayers.length < formData.maxPlayers || isSelected;
-                return (
-                  <button
-                    key={user.id}
-                    type="button"
-                    onClick={() => canSelect && togglePlayer(user.id)}
-                    disabled={!canSelect}
-                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition ${
-                      isSelected
-                        ? 'bg-primary bg-opacity-10 border-2 border-primary'
-                        : canSelect
-                        ? 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
-                        : 'bg-gray-50 border-2 border-transparent opacity-50 cursor-not-allowed'
-                    }`}
-                  >
-                    <div className="relative">
-                      <UserAvatar
-                        name={user.name}
-                        photoUrl={user.photo_url}
-                        size="md"
-                      />
-                      <div
-                        className={`absolute -bottom-1 -right-1 ${getRankingColor(
-                          user.ranking || '0'
-                        )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
-                      >
-                        {user.ranking}
-                      </div>
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="font-medium text-gray-900">{user.name}</div>
-                      <div className="text-sm text-gray-500">Rank: {user.ranking}</div>
-                    </div>
-                    {isSelected && (
-                      <svg className="w-6 h-6 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
+
+            {/* Currently Booked Players */}
+            {bookedPlayers.length > 0 && (
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Booked Players</h3>
+                <div className="space-y-2">
+                  {bookedPlayers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center gap-3 p-3 bg-green-50 border-2 border-green-200 rounded-lg"
+                    >
+                      <div className="relative">
+                        <UserAvatar
+                          name={user.name}
+                          photoUrl={user.photo_url}
+                          size="md"
                         />
-                      </svg>
+                        <div
+                          className={`absolute -bottom-1 -right-1 ${getRankingColor(
+                            user.ranking || '0'
+                          )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
+                        >
+                          {user.ranking}
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{user.name}</div>
+                        <div className="text-sm text-gray-500">Rank: {user.ranking}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => togglePlayer(user.id)}
+                        className="text-red-600 hover:text-red-700 text-sm font-medium"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Add Players Search */}
+            {selectedPlayers.length < formData.maxPlayers && (
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Add Players</h3>
+                <input
+                  type="text"
+                  placeholder="Search by name or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent mb-2"
+                />
+                {searchQuery && (
+                  <div className="border border-gray-200 rounded-lg max-h-64 overflow-y-auto">
+                    {filteredAvailableUsers.length > 0 ? (
+                      <div className="space-y-1 p-2">
+                        {filteredAvailableUsers.map((user) => (
+                          <button
+                            key={user.id}
+                            type="button"
+                            onClick={() => {
+                              togglePlayer(user.id);
+                              setSearchQuery('');
+                            }}
+                            className="w-full flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition"
+                          >
+                            <div className="relative">
+                              <UserAvatar
+                                name={user.name}
+                                photoUrl={user.photo_url}
+                                size="md"
+                              />
+                              <div
+                                className={`absolute -bottom-1 -right-1 ${getRankingColor(
+                                  user.ranking || '0'
+                                )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
+                              >
+                                {user.ranking}
+                              </div>
+                            </div>
+                            <div className="flex-1 text-left">
+                              <div className="font-medium text-gray-900">{user.name}</div>
+                              <div className="text-sm text-gray-500">Rank: {user.ranking}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        No users found matching "{searchQuery}"
+                      </div>
                     )}
-                  </button>
-                );
-              })}
-            </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Error Message */}

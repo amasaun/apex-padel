@@ -141,9 +141,9 @@ export default function Matches() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="bg-primary hover:bg-primary-dark text-white px-6 py-2 rounded-lg font-medium transition"
+            className="bg-primary hover:bg-primary-dark text-white px-3 py-1.5 rounded-lg font-medium transition text-sm"
           >
-            + Create Match
+            + Match
           </button>
           <UserMenu />
         </div>
@@ -165,7 +165,8 @@ export default function Matches() {
 
       {/* View Toggle and Date Filter */}
       <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+        {/* Date Filter - Hidden on mobile */}
+        <div className="hidden sm:flex items-center gap-3">
           <label htmlFor="date-picker" className="text-sm font-medium text-gray-700">
             Filter by date:
           </label>

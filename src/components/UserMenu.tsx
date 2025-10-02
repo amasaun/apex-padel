@@ -71,14 +71,14 @@ export default function UserMenu() {
           <UserAvatar
             name={user.name}
             photoUrl={user.photo_url}
-            size="sm"
+            size="md"
             className="border-2 border-gray-200"
           />
           {user.ranking && (
             <div
               className={`absolute -bottom-1 -right-1 ${getRankingColor(
                 user.ranking
-              )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[24px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
+              )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
             >
               {user.ranking}
             </div>

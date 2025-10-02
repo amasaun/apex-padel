@@ -151,10 +151,9 @@ export async function isCurrentUserAdmin(): Promise<boolean> {
  * Make a user an admin (only admins can do this)
  */
 export async function makeUserAdmin(userId: string): Promise<void> {
-  const { error } = await supabase
-    .from('users')
-    .update({ is_admin: true })
-    .eq('id', userId);
+  const { error } = await supabase.rpc('make_user_admin', {
+    target_user_id: userId,
+  });
 
   if (error) throw error;
 }
@@ -163,10 +162,9 @@ export async function makeUserAdmin(userId: string): Promise<void> {
  * Remove admin status from a user (only admins can do this)
  */
 export async function removeUserAdmin(userId: string): Promise<void> {
-  const { error } = await supabase
-    .from('users')
-    .update({ is_admin: false })
-    .eq('id', userId);
+  const { error } = await supabase.rpc('remove_user_admin', {
+    target_user_id: userId,
+  });
 
   if (error) throw error;
 }
