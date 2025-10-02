@@ -7,6 +7,7 @@ import EditProfile from './pages/EditProfile';
 import Auth from './pages/Auth';
 import Invites from './pages/Invites';
 import AdminUsers from './pages/AdminUsers';
+import ProtectedRoute from './components/ProtectedRoute';
 
 const queryClient = new QueryClient();
 
@@ -18,12 +19,54 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/matches" replace />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/matches" element={<Matches />} />
-            <Route path="/matches/:id" element={<MatchDetail />} />
-            <Route path="/profile/:id" element={<Profile />} />
-            <Route path="/profile/:id/edit" element={<EditProfile />} />
-            <Route path="/invites" element={<Invites />} />
-            <Route path="/admin/users" element={<AdminUsers />} />
+            <Route
+              path="/matches"
+              element={
+                <ProtectedRoute>
+                  <Matches />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/matches/:id"
+              element={
+                <ProtectedRoute>
+                  <MatchDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/:id"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <EditProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/invites"
+              element={
+                <ProtectedRoute>
+                  <Invites />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute>
+                  <AdminUsers />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </div>
       </BrowserRouter>
