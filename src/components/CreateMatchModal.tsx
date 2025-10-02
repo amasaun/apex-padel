@@ -37,7 +37,7 @@ const getNextRoundedTime = () => {
   const hours = now.getHours();
 
   // Round up to next 30-minute increment
-  let roundedMinutes = minutes <= 30 ? 30 : 60;
+  let roundedMinutes = minutes < 30 ? 30 : 60;
   let roundedHours = hours;
 
   if (roundedMinutes === 60) {
@@ -59,7 +59,7 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
     title: '',
     date: getTodayDate(),
     time: getNextRoundedTime(),
-    duration: 90,
+    duration: 60,
     maxPlayers: 4,
     location: LOCATIONS[0],
     isPrivate: false,
@@ -122,7 +122,7 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
         title: '',
         date: getTodayDate(),
         time: getNextRoundedTime(),
-        duration: 90,
+        duration: 60,
         maxPlayers: 4,
         location: LOCATIONS[0],
         isPrivate: false,

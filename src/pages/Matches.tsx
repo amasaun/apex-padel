@@ -538,12 +538,12 @@ export default function Matches() {
                 <Link
                   key={match.id}
                   to={`/matches/${match.id}`}
-                  className={`block rounded-lg shadow-sm transition p-6 border ${
+                  className={`block rounded-lg shadow-lg transition-all duration-200 p-6 border ${
                     isCompleted
-                      ? 'bg-gray-100 border-gray-300 opacity-60'
+                      ? 'bg-gray-100 border-gray-300 opacity-60 shadow-md'
                       : isFull
-                      ? 'bg-gray-100 border-gray-300 opacity-75'
-                      : 'bg-white border-gray-200 hover:shadow-md'
+                      ? 'bg-gray-100 border-gray-300 opacity-75 shadow-md'
+                      : 'bg-white border-gray-200 hover:shadow-xl hover:-translate-y-1'
                   }`}
                 >
               <div className="flex justify-between items-start mb-4">

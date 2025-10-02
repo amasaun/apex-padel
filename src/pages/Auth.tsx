@@ -74,7 +74,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-8">
+    <div className={`bg-white flex items-center justify-center px-4 ${mode === 'signin' ? '' : 'py-8'}`}>
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <img
@@ -87,7 +87,7 @@ export default function Auth() {
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-8 border border-gray-200">
+        <div className="bg-gray-50 rounded-lg shadow-sm p-8 border border-gray-200">
           {/* Mode Toggle */}
           <div className="flex gap-2 mb-6">
             <button

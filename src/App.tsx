@@ -17,7 +17,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="min-h-screen bg-white flex flex-col">
           <div className="flex-1">
             <Routes>
               <Route path="/" element={<Navigate to="/matches" replace />} />
