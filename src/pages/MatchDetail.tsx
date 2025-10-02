@@ -5,7 +5,6 @@ import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch }
 import { getCurrentUserProfile } from '@/lib/auth';
 import { getRankingColor, formatTime, calculateEndTime, formatDuration } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
-import { sendBookingConfirmationEmail, sendCancellationEmail } from '@/lib/email';
 import EditMatchModal from '@/components/EditMatchModal';
 import UserAvatar from '@/components/UserAvatar';
 
