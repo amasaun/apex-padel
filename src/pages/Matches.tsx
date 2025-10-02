@@ -155,7 +155,13 @@ export default function Matches() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Apex Padel</h1>
+        {/* Logo + Title - Show only text on mobile, logo + text on desktop */}
+        <div className="flex items-center gap-3">
+          <img src="/apex-logo.svg" alt="Apex Padel" className="hidden sm:block h-10 w-10" />
+          <h1 className="text-3xl bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent" style={{ fontFamily: '"Russo One", sans-serif', fontWeight: 400 }}>
+            APEX PADEL
+          </h1>
+        </div>
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsCreateModalOpen(true)}
