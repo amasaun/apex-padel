@@ -222,8 +222,8 @@ export default function Matches() {
         </div>
         </div>
 
-        {/* My Matches Toggle - Visible on all screens */}
-        <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-lg">
+        {/* My Matches Toggle - Hidden on mobile, shown on desktop */}
+        <div className="hidden sm:flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-lg">
           <span className="text-sm font-medium text-gray-700">My Matches Only</span>
           <button
             type="button"
@@ -274,9 +274,30 @@ export default function Matches() {
       </div>
 
       {viewMode === 'agenda' && (
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">
-          {selectedDate === 'all' ? 'Upcoming Matches' : `Matches on ${formatDate(selectedDate)}`}
-        </h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">
+            {selectedDate === 'all' ? 'Upcoming Matches' : `Matches on ${formatDate(selectedDate)}`}
+          </h2>
+          {/* My Matches Toggle - Mobile only, inline with heading */}
+          <div className="sm:hidden flex items-center gap-2">
+            <span className="text-xs font-medium text-gray-600">My Matches</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showMyMatchesOnly}
+              onClick={() => setShowMyMatchesOnly(!showMyMatchesOnly)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                showMyMatchesOnly ? 'bg-primary' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  showMyMatchesOnly ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
       )}
 
       {viewMode === 'calendar' ? (
