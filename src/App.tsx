@@ -7,6 +7,7 @@ import EditProfile from './pages/EditProfile';
 import Auth from './pages/Auth';
 import Invites from './pages/Invites';
 import AdminUsers from './pages/AdminUsers';
+import AdminLocations from './pages/AdminLocations';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const queryClient = new QueryClient();
@@ -64,6 +65,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <AdminUsers />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/locations"
+              element={
+                <ProtectedRoute>
+                  <AdminLocations />
                 </ProtectedRoute>
               }
             />

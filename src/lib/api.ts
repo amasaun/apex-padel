@@ -350,3 +350,53 @@ export async function deleteInviteCode(id: string) {
 
   if (error) throw error;
 }
+
+// ============================================
+// LOCATIONS
+// ============================================
+
+export async function getLocations(includeInactive = false) {
+  let query = supabase.from('locations').select('*').order('name');
+
+  if (!includeInactive) {
+    query = query.eq('is_active', true);
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw error;
+  return data;
+}
+
+export async function createLocation(location: { name: string; logo_url?: string }) {
+  const { data, error } = await supabase
+    .from('locations')
+    .insert({
+      name: location.name,
+      logo_url: location.logo_url || null,
+      is_active: true,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function updateLocation(id: string, updates: { name?: string; logo_url?: string; is_active?: boolean }) {
+  const { data, error } = await supabase
+    .from('locations')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteLocation(id: string) {
+  const { error } = await supabase.from('locations').delete().eq('id', id);
+
+  if (error) throw error;
+}

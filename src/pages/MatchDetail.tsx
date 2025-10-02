@@ -7,6 +7,7 @@ import { getRankingColor, formatTime, calculateEndTime, formatDuration } from '@
 import { LOCATION_DATA } from '@/lib/locations';
 import EditMatchModal from '@/components/EditMatchModal';
 import UserAvatar from '@/components/UserAvatar';
+import { Map, Marker } from 'pigeon-maps';
 
 export default function MatchDetail() {
   const { id } = useParams<{ id: string }>();
@@ -454,6 +455,48 @@ export default function MatchDetail() {
             <span className="font-medium text-gray-800">{match.location}</span>
           </div>
         </div>
+
+        {/* Location Map */}
+        {LOCATION_DATA[match.location]?.coordinates && (
+          <div className="mb-8">
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                LOCATION_DATA[match.location].address
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block"
+            >
+              <div className="relative bg-gray-100 rounded-lg overflow-hidden border-2 border-gray-200 hover:border-primary transition group cursor-pointer">
+                <Map
+                  height={192}
+                  center={LOCATION_DATA[match.location].coordinates}
+                  zoom={15}
+                  attribution={false}
+                  mouseEvents={false}
+                  touchEvents={false}
+                >
+                  <Marker
+                    width={40}
+                    anchor={LOCATION_DATA[match.location].coordinates}
+                    color="#ef4444"
+                  />
+                </Map>
+                <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-10 transition pointer-events-none">
+                  <div className="bg-white px-4 py-2 rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition">
+                    <div className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      Open in Google Maps
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-gray-50 rounded-lg p-4">
