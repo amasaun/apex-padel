@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getMatches } from '@/lib/api';
+import { getCurrentUserProfile } from '@/lib/auth';
 import { getRankingColor, formatTime, formatDuration, calculateEndTime } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
 import CreateMatchModal from '@/components/CreateMatchModal';
@@ -14,6 +15,7 @@ export default function Matches() {
   const [activeShareMenu, setActiveShareMenu] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'agenda' | 'calendar'>('agenda');
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [showMyMatchesOnly, setShowMyMatchesOnly] = useState(false);
 
   // Fetch matches from Supabase
   const { data: matches = [], isLoading, error, refetch } = useQuery({
@@ -21,14 +23,30 @@ export default function Matches() {
     queryFn: () => getMatches(selectedDate === 'all' ? {} : { date: selectedDate }),
   });
 
-  // Sort matches chronologically (soonest first)
+  // Get current user
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: getCurrentUserProfile,
+  });
+
+  // Sort and filter matches
   const filteredMatches = useMemo(() => {
-    return [...matches].sort((a, b) => {
+    let result = [...matches].sort((a, b) => {
       const dateTimeA = new Date(`${a.date}T${a.time}`).getTime();
       const dateTimeB = new Date(`${b.date}T${b.time}`).getTime();
       return dateTimeA - dateTimeB;
     });
-  }, [matches]);
+
+    // Filter to show only user's matches if toggle is on
+    if (showMyMatchesOnly && currentUser) {
+      result = result.filter(match =>
+        match.created_by === currentUser.id ||
+        match.bookings.some(booking => booking.user_id === currentUser.id)
+      );
+    }
+
+    return result;
+  }, [matches, showMyMatchesOnly, currentUser]);
 
 
   const formatDate = (dateStr: string) => {
@@ -202,6 +220,26 @@ export default function Matches() {
             </button>
           )}
         </div>
+        </div>
+
+        {/* My Matches Toggle - Visible on all screens */}
+        <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-lg">
+          <span className="text-sm font-medium text-gray-700">My Matches Only</span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={showMyMatchesOnly}
+            onClick={() => setShowMyMatchesOnly(!showMyMatchesOnly)}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+              showMyMatchesOnly ? 'bg-primary' : 'bg-gray-300'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                showMyMatchesOnly ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </div>
 
         {/* View Mode Toggle - Hidden on mobile */}

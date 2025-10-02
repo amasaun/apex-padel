@@ -150,7 +150,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
     const query = searchQuery.toLowerCase();
     return (
       user.name.toLowerCase().includes(query) ||
-      user.email.toLowerCase().includes(query)
+      (user.email && user.email.toLowerCase().includes(query))
     );
   });
 
