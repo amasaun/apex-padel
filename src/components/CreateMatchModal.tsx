@@ -30,6 +30,24 @@ const getTodayDate = () => {
   return today.toISOString().split('T')[0];
 };
 
+// Get next 30-minute increment time in HH:MM format
+const getNextRoundedTime = () => {
+  const now = new Date();
+  const minutes = now.getMinutes();
+  const hours = now.getHours();
+
+  // Round up to next 30-minute increment
+  let roundedMinutes = minutes <= 30 ? 30 : 60;
+  let roundedHours = hours;
+
+  if (roundedMinutes === 60) {
+    roundedMinutes = 0;
+    roundedHours = (hours + 1) % 24;
+  }
+
+  return `${roundedHours.toString().padStart(2, '0')}:${roundedMinutes.toString().padStart(2, '0')}`;
+};
+
 interface CreateMatchModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -40,7 +58,7 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
   const [formData, setFormData] = useState({
     title: '',
     date: getTodayDate(),
-    time: '18:00', // Default to 6:00 PM
+    time: getNextRoundedTime(),
     duration: 90,
     maxPlayers: 4,
     location: LOCATIONS[0],
@@ -103,7 +121,7 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
       setFormData({
         title: '',
         date: getTodayDate(),
-        time: '18:00',
+        time: getNextRoundedTime(),
         duration: 90,
         maxPlayers: 4,
         location: LOCATIONS[0],

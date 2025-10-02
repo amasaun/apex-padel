@@ -9,6 +9,7 @@ import Invites from './pages/Invites';
 import AdminUsers from './pages/AdminUsers';
 import AdminLocations from './pages/AdminLocations';
 import ProtectedRoute from './components/ProtectedRoute';
+import Footer from './components/Footer';
 
 const queryClient = new QueryClient();
 
@@ -16,67 +17,70 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <div className="min-h-screen bg-gray-50">
-          <Routes>
-            <Route path="/" element={<Navigate to="/matches" replace />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route
-              path="/matches"
-              element={
-                <ProtectedRoute>
-                  <Matches />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/matches/:id"
-              element={
-                <ProtectedRoute>
-                  <MatchDetail />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile/:id"
-              element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile/:id/edit"
-              element={
-                <ProtectedRoute>
-                  <EditProfile />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/invites"
-              element={
-                <ProtectedRoute>
-                  <Invites />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/users"
-              element={
-                <ProtectedRoute>
-                  <AdminUsers />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin/locations"
-              element={
-                <ProtectedRoute>
-                  <AdminLocations />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+          <div className="flex-1">
+            <Routes>
+              <Route path="/" element={<Navigate to="/matches" replace />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route
+                path="/matches"
+                element={
+                  <ProtectedRoute>
+                    <Matches />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/matches/:id"
+                element={
+                  <ProtectedRoute>
+                    <MatchDetail />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile/:id"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile/:id/edit"
+                element={
+                  <ProtectedRoute>
+                    <EditProfile />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/invites"
+                element={
+                  <ProtectedRoute>
+                    <Invites />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/users"
+                element={
+                  <ProtectedRoute>
+                    <AdminUsers />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/locations"
+                element={
+                  <ProtectedRoute>
+                    <AdminLocations />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </div>
+          <Footer />
         </div>
       </BrowserRouter>
     </QueryClientProvider>

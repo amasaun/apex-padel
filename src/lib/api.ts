@@ -63,7 +63,6 @@ export async function getMatches(filters?: { date?: string; location?: string })
         user:users (*)
       )
     `)
-    .gte('date', new Date().toISOString().split('T')[0]) // Only future matches
     .order('date', { ascending: true })
     .order('time', { ascending: true });
 

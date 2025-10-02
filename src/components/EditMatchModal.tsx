@@ -34,10 +34,15 @@ interface EditMatchModalProps {
 }
 
 export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: EditMatchModalProps) {
+  // Ensure time is in HH:MM format (remove seconds if present)
+  const normalizeTime = (time: string) => {
+    return time.split(':').slice(0, 2).join(':');
+  };
+
   const [formData, setFormData] = useState({
     title: match.title || '',
     date: match.date,
-    time: match.time,
+    time: normalizeTime(match.time),
     duration: match.duration,
     maxPlayers: match.max_players,
     location: match.location,
@@ -56,7 +61,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
       setFormData({
         title: match.title || '',
         date: match.date,
-        time: match.time,
+        time: normalizeTime(match.time),
         duration: match.duration,
         maxPlayers: match.max_players,
         location: match.location,

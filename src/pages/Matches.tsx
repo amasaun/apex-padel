@@ -16,6 +16,7 @@ export default function Matches() {
   const [viewMode, setViewMode] = useState<'agenda' | 'calendar'>('agenda');
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showMyMatchesOnly, setShowMyMatchesOnly] = useState(false);
+  const [showPastMatches, setShowPastMatches] = useState(false);
 
   // Fetch matches from Supabase
   const { data: matches = [], isLoading, error, refetch } = useQuery({
@@ -29,13 +30,41 @@ export default function Matches() {
     queryFn: getCurrentUserProfile,
   });
 
+  const getMatchStatus = (dateStr: string, timeStr: string, duration: number) => {
+    const now = new Date();
+    const matchStartTime = new Date(`${dateStr}T${timeStr}`);
+    const matchEndTime = new Date(matchStartTime.getTime() + (duration * 60 * 1000));
+
+    if (now < matchStartTime) {
+      // Match hasn't started yet - upcoming
+      return 'upcoming';
+    } else if (now >= matchStartTime && now < matchEndTime) {
+      // Match has started but hasn't ended - in progress
+      return 'in-progress';
+    } else {
+      // now >= matchEndTime - Match has ended - completed
+      return 'completed';
+    }
+  };
+
   // Sort and filter matches
   const filteredMatches = useMemo(() => {
+    const now = new Date();
+
     let result = [...matches].sort((a, b) => {
       const dateTimeA = new Date(`${a.date}T${a.time}`).getTime();
       const dateTimeB = new Date(`${b.date}T${b.time}`).getTime();
       return dateTimeA - dateTimeB;
     });
+
+    // Filter out completed matches by default (but keep in-progress)
+    if (!showPastMatches) {
+      result = result.filter(match => {
+        const status = getMatchStatus(match.date, match.time, match.duration);
+        // Keep upcoming and in-progress matches, hide completed ones
+        return status !== 'completed';
+      });
+    }
 
     // Filter to show only user's matches if toggle is on
     if (showMyMatchesOnly && currentUser) {
@@ -46,11 +75,13 @@ export default function Matches() {
     }
 
     return result;
-  }, [matches, showMyMatchesOnly, currentUser]);
+  }, [matches, showMyMatchesOnly, currentUser, showPastMatches]);
 
 
   const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
+    // Parse date as local time to avoid timezone issues
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   };
 
@@ -333,36 +364,47 @@ export default function Matches() {
       </div>
 
       {viewMode === 'agenda' && (
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {selectedDate === 'all' ? 'Upcoming Matches' : `Matches on ${formatDate(selectedDate)}`}
-          </h2>
-          {/* My Matches Toggle - Mobile only, inline with heading */}
-          <div className="sm:hidden flex items-center gap-2">
-            <span className="text-xs font-medium text-gray-600">My Matches</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showMyMatchesOnly}
-              onClick={() => setShowMyMatchesOnly(!showMyMatchesOnly)}
-              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                showMyMatchesOnly ? 'bg-primary' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  showMyMatchesOnly ? 'translate-x-5' : 'translate-x-0'
+        <>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {selectedDate === 'all' ? 'Upcoming Matches' : `Matches on ${formatDate(selectedDate)}`}
+            </h2>
+            {/* My Matches Toggle - Mobile only, inline with heading */}
+            <div className="sm:hidden flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-600">My Matches</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={showMyMatchesOnly}
+                onClick={() => setShowMyMatchesOnly(!showMyMatchesOnly)}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                  showMyMatchesOnly ? 'bg-primary' : 'bg-gray-300'
                 }`}
-              />
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    showMyMatchesOnly ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+          {/* Show Completed Matches link - Mobile and Desktop */}
+          <div className="mb-4">
+            <button
+              onClick={() => setShowPastMatches(!showPastMatches)}
+              className="text-sm text-gray-600 hover:text-gray-900 font-medium underline"
+            >
+              {showPastMatches ? 'Hide' : 'Show'} Completed Matches
             </button>
           </div>
-        </div>
+        </>
       )}
 
       {viewMode === 'calendar' ? (
         <div className="hidden md:block bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           {/* Calendar Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-gray-900">
               {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </h2>
@@ -384,6 +426,16 @@ export default function Matches() {
                 </svg>
               </button>
             </div>
+          </div>
+
+          {/* Show Completed Matches link */}
+          <div className="mb-4">
+            <button
+              onClick={() => setShowPastMatches(!showPastMatches)}
+              className="text-sm text-gray-600 hover:text-gray-900 font-medium underline"
+            >
+              {showPastMatches ? 'Hide' : 'Show'} Completed Matches
+            </button>
           </div>
 
           {/* Calendar Grid */}
@@ -478,13 +530,18 @@ export default function Matches() {
               const isFull = match.available_slots === 0;
               const hoursUntil = getTimeUntilMatch(match.date, match.time);
               const playersNeeded = match.max_players - match.bookings.length;
+              const matchStatus = getMatchStatus(match.date, match.time, match.duration);
+              const isCompleted = matchStatus === 'completed';
+              const isInProgress = matchStatus === 'in-progress';
 
               return (
                 <Link
                   key={match.id}
                   to={`/matches/${match.id}`}
                   className={`block rounded-lg shadow-sm transition p-6 border ${
-                    isFull
+                    isCompleted
+                      ? 'bg-gray-100 border-gray-300 opacity-60'
+                      : isFull
                       ? 'bg-gray-100 border-gray-300 opacity-75'
                       : 'bg-white border-gray-200 hover:shadow-md'
                   }`}
@@ -498,6 +555,16 @@ export default function Matches() {
                       </div>
                     )}
                     <div className="flex items-center gap-1">
+                      {isInProgress && (
+                        <span className="inline-block px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
+                          🔴 In Progress
+                        </span>
+                      )}
+                      {isCompleted && (
+                        <span className="inline-block px-2 py-0.5 bg-gray-200 text-gray-600 text-xs font-medium rounded-full">
+                          ✓ Completed
+                        </span>
+                      )}
                       {match.is_private && (
                         <span className="inline-block px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
                           🔒 Private
@@ -639,16 +706,20 @@ export default function Matches() {
                   </div>
                 </div>
                 <div className="text-right">
-                  {isFull ? (
-                    <div className="inline-block bg-gray-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
-                      FULL
-                    </div>
-                  ) : (
+                  {!isCompleted && (
                     <>
-                      <div className="text-sm text-gray-500 mb-1">Available Slots</div>
-                      <div className="text-2xl font-bold text-primary">
-                        {match.available_slots}/{match.max_players}
-                      </div>
+                      {isFull ? (
+                        <div className="inline-block bg-gray-500 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                          FULL
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-sm text-gray-500 mb-1">Available Slots</div>
+                          <div className="text-2xl font-bold text-primary">
+                            {match.available_slots}/{match.max_players}
+                          </div>
+                        </>
+                      )}
                     </>
                   )}
                 </div>
@@ -701,7 +772,7 @@ export default function Matches() {
                 </div>
               )}
 
-              {match.available_slots > 0 && (
+              {match.available_slots > 0 && matchStatus === 'upcoming' && (
                 <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
                   <span className={`text-sm ${getUrgencyStyle(hoursUntil)}`}>
                     Need {playersNeeded} more {playersNeeded === 1 ? 'player' : 'players'}
