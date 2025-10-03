@@ -8,6 +8,7 @@ import { LOCATION_DATA } from '@/lib/locations';
 import CreateMatchModal from '@/components/CreateMatchModal';
 import UserMenu from '@/components/UserMenu';
 import UserAvatar from '@/components/UserAvatar';
+import { useMatchNotifications } from '@/hooks/useMatchNotifications';
 
 export default function Matches() {
   const [selectedDate, setSelectedDate] = useState<string>('all');
@@ -17,6 +18,10 @@ export default function Matches() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showMyMatchesOnly, setShowMyMatchesOnly] = useState(false);
   const [showPastMatches, setShowPastMatches] = useState(false);
+  const [showNotificationBanner, setShowNotificationBanner] = useState(true);
+
+  // Notification hook
+  const { permission, requestPermission, isSupported } = useMatchNotifications();
 
   // Fetch matches from Supabase
   const { data: matches = [], isLoading, error, refetch } = useQuery({
@@ -268,6 +273,52 @@ export default function Matches() {
           </p>
         </div>
       )}
+
+      {/* Notification Banner */}
+      {isSupported && permission === 'default' && showNotificationBanner && (
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-blue-900">
+                Get notified when new matches are created
+              </p>
+              <p className="text-xs text-blue-700 mt-1">
+                Receive instant browser notifications for new public matches
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                console.log('Enable button clicked!');
+                const granted = await requestPermission();
+                console.log('requestPermission returned:', granted);
+                if (granted) {
+                  setShowNotificationBanner(false);
+                }
+              }}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition"
+            >
+              Enable
+            </button>
+            <button
+              onClick={() => setShowNotificationBanner(false)}
+              className="p-2 hover:bg-blue-100 rounded-lg transition"
+              aria-label="Dismiss"
+            >
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
 
       {/* View Toggle and Date Filter */}
       <div className="mb-6 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between">
