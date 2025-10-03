@@ -5,6 +5,7 @@ import { getMatches, getLocations } from '@/lib/api';
 import { getCurrentUserProfile } from '@/lib/auth';
 import { getRankingColor, formatTime, formatDuration, calculateEndTime, getRankingLabel } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
+import { getPrimaryInviteCode } from '@/lib/invites';
 import CreateMatchModal from '@/components/CreateMatchModal';
 import UserMenu from '@/components/UserMenu';
 import UserAvatar from '@/components/UserAvatar';
@@ -40,6 +41,12 @@ export default function Matches() {
   const { data: locations = [] } = useQuery({
     queryKey: ['locations'],
     queryFn: () => getLocations(),
+  });
+
+  // Fetch primary invite code for sharing
+  const { data: inviteCode } = useQuery({
+    queryKey: ['primaryInviteCode'],
+    queryFn: getPrimaryInviteCode,
   });
 
   const getMatchStatus = (dateStr: string, timeStr: string, duration: number) => {
@@ -144,6 +151,8 @@ export default function Matches() {
     e.preventDefault();
     e.stopPropagation();
 
+    console.log('Share WhatsApp - inviteCode:', inviteCode);
+
     let matchInfo = `🎾 Join me for Padel!\n\n`;
     matchInfo += `📍 ${match.location}\n`;
     matchInfo += `${LOCATION_DATA[match.location]?.address || ''}\n\n`;
@@ -161,6 +170,15 @@ export default function Matches() {
 
     matchInfo += `\n👥 ${match.available_slots} slots available\n\n`;
     matchInfo += `Book here: ${getShareUrl(match.id)}`;
+
+    if (inviteCode) {
+      console.log('Adding invite link to message');
+      matchInfo += `\n\n🔑 New to Apex Padel? Join here:\n${window.location.origin}/auth?invite=${inviteCode}`;
+    } else {
+      console.log('No invite code available');
+    }
+
+    console.log('Final message:', matchInfo);
 
     const text = encodeURIComponent(matchInfo);
     window.open(`https://wa.me/?text=${text}`, '_blank');
@@ -185,6 +203,10 @@ export default function Matches() {
 
     if (match.gender_requirement && match.gender_requirement !== 'all') {
       bodyText += `- ${match.gender_requirement === 'male_only' ? 'Lads only' : 'Ladies only'}\n`;
+    }
+
+    if (inviteCode) {
+      bodyText += `\n---\nNew to Apex Padel? Join here: ${window.location.origin}/auth?invite=${inviteCode}`;
     }
 
     const body = encodeURIComponent(bodyText);

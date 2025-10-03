@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch } from '@/lib/api';
+import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch, getUserById } from '@/lib/api';
 import { getCurrentUserProfile } from '@/lib/auth';
 import { getRankingColor, formatTime, calculateEndTime, formatDuration, getRankingLabel } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
+import { sendCreatorBookingNotification, sendCreatorCancellationNotification } from '@/lib/email';
+import { getPrimaryInviteCode } from '@/lib/invites';
 import EditMatchModal from '@/components/EditMatchModal';
 import UserAvatar from '@/components/UserAvatar';
 import { Map, Marker } from 'pigeon-maps';
@@ -26,6 +28,19 @@ export default function MatchDetail() {
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
     queryFn: getCurrentUserProfile,
+  });
+
+  // Get match creator
+  const { data: matchCreator } = useQuery({
+    queryKey: ['user', match?.created_by],
+    queryFn: () => getUserById(match!.created_by),
+    enabled: !!match?.created_by,
+  });
+
+  // Fetch primary invite code for sharing
+  const { data: inviteCode } = useQuery({
+    queryKey: ['primaryInviteCode'],
+    queryFn: getPrimaryInviteCode,
   });
 
   const isCreator = match?.created_by === currentUser?.id;
@@ -81,6 +96,10 @@ export default function MatchDetail() {
       bodyText += `- ${match.gender_requirement === 'male_only' ? 'Lads only' : 'Ladies only'}\n`;
     }
 
+    if (inviteCode) {
+      bodyText += `\n---\nNew to Apex Padel? Join here: ${window.location.origin}/auth?invite=${inviteCode}`;
+    }
+
     const body = encodeURIComponent(bodyText);
     const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
     window.location.href = mailtoLink;
@@ -107,6 +126,10 @@ export default function MatchDetail() {
 
     matchInfo += `\n👥 ${match.available_slots} slots available\n\n`;
     matchInfo += `Book here: ${getShareUrl()}`;
+
+    if (inviteCode) {
+      matchInfo += `\n\n🔑 New to Apex Padel? Join here:\n${window.location.origin}/auth?invite=${inviteCode}`;
+    }
 
     const text = encodeURIComponent(matchInfo);
     window.open(`https://wa.me/?text=${text}`, '_blank');
@@ -241,17 +264,32 @@ export default function MatchDetail() {
 
     try {
       const isUnbooking = isBooked;
+      const userIsCreator = match.created_by === currentUser.id;
 
       if (isUnbooking) {
         // Unbook the slot
         await deleteBookingByUserAndMatch(match.id, currentUser.id);
 
-        // TODO: Send cancellation email when enabled
-        // await sendCancellationEmail({...});
+        // Notify creator if someone else cancelled
+        if (!userIsCreator && matchCreator?.email) {
+          const updatedMatch = await refetch();
+          const newAvailableSlots = updatedMatch.data?.available_slots || 0;
+
+          await sendCreatorCancellationNotification({
+            creatorEmail: matchCreator.email,
+            creatorName: matchCreator.name,
+            playerName: currentUser.name,
+            matchTitle: match.title || 'Padel Match',
+            matchDate: new Date(match.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+            matchTime: formatTime(match.time),
+            location: match.location,
+            availableSlots: newAvailableSlots,
+            maxPlayers: match.max_players,
+          });
+        }
       } else {
         // Check if user meets the level requirement (unless they're the creator)
-        const isCreator = match.created_by === currentUser.id;
-        if (!isCreator && match.required_level !== null && match.required_level !== undefined) {
+        if (!userIsCreator && match.required_level !== null && match.required_level !== undefined) {
           const userRanking = parseFloat(currentUser.ranking || '0');
           if (userRanking < match.required_level) {
             alert(`This match requires a minimum ranking of ${match.required_level} or above. Your current ranking is ${currentUser.ranking}.`);
@@ -260,7 +298,7 @@ export default function MatchDetail() {
         }
 
         // Check if user meets the gender requirement (unless they're the creator)
-        if (!isCreator && match.gender_requirement && match.gender_requirement !== 'all') {
+        if (!userIsCreator && match.gender_requirement && match.gender_requirement !== 'all') {
           const userGender = currentUser.gender;
           if (match.gender_requirement === 'male_only' && userGender !== 'male') {
             alert('This match is for male players only.');
@@ -275,8 +313,23 @@ export default function MatchDetail() {
         // Book the slot
         await createBooking(match.id, currentUser.id);
 
-        // TODO: Send booking confirmation email when enabled
-        // await sendBookingConfirmationEmail({...});
+        // Notify creator if someone else joined
+        if (!userIsCreator && matchCreator?.email) {
+          const updatedMatch = await refetch();
+          const newAvailableSlots = updatedMatch.data?.available_slots || 0;
+
+          await sendCreatorBookingNotification({
+            creatorEmail: matchCreator.email,
+            creatorName: matchCreator.name,
+            playerName: currentUser.name,
+            matchTitle: match.title || 'Padel Match',
+            matchDate: new Date(match.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+            matchTime: formatTime(match.time),
+            location: match.location,
+            availableSlots: newAvailableSlots,
+            maxPlayers: match.max_players,
+          });
+        }
       }
 
       // Refresh match data

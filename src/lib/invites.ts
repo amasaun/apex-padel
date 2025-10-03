@@ -172,3 +172,33 @@ export async function revokeInvite(inviteId: string): Promise<void> {
 
   if (error) throw error;
 }
+
+/**
+ * Get a primary/default active invite code for sharing
+ * Returns the first active invite code, or null if none exists
+ */
+export async function getPrimaryInviteCode(): Promise<string | null> {
+  // Simple query: get the first active invite code
+  const { data, error } = await supabase
+    .from('invite_codes')
+    .select('code, is_active, max_uses, current_uses, expires_at')
+    .eq('is_active', true)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  console.log('Invite code query result:', { data, error });
+
+  if (error) {
+    console.error('Error fetching invite code:', error);
+    return null;
+  }
+
+  if (!data) {
+    console.log('No active invite code found');
+    return null;
+  }
+
+  console.log('Selected invite code:', data.code);
+  return data.code;
+}
