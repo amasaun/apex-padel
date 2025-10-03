@@ -5,6 +5,7 @@ import { makeUserAdmin, removeUserAdmin, isCurrentUserAdmin } from '@/lib/auth';
 import { User } from '@/types';
 import { getRankingColor } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import UserAvatar from '@/components/UserAvatar';
 
 export default function AdminUsers() {
   const [users, setUsers] = useState<User[]>([]);
@@ -84,15 +85,23 @@ export default function AdminUsers() {
     }
   };
 
-  const filteredUsers = users.filter((user) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      user.name.toLowerCase().includes(query) ||
-      (user.email && user.email.toLowerCase().includes(query)) ||
-      (user.ranking && user.ranking.toString().includes(query))
-    );
-  });
+  const filteredUsers = users
+    .filter((user) => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        user.name.toLowerCase().includes(query) ||
+        (user.email && user.email.toLowerCase().includes(query)) ||
+        (user.ranking && user.ranking.toString().includes(query))
+      );
+    })
+    .sort((a, b) => {
+      // Admins first
+      if (a.is_admin && !b.is_admin) return -1;
+      if (!a.is_admin && b.is_admin) return 1;
+      // Then alphabetical by name
+      return a.name.localeCompare(b.name);
+    });
 
   if (!isAdmin) {
     return (
@@ -187,25 +196,19 @@ export default function AdminUsers() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="relative">
-                        <img
-                          src={
-                            user.photo_url ||
-                            `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                              user.name
-                            )}&background=random`
-                          }
-                          alt={user.name}
-                          className="w-10 h-10 rounded-full"
+                        <UserAvatar
+                          name={user.name}
+                          photoUrl={user.photo_url}
+                          size="md"
+                          className="border-2 border-white"
                         />
-                        {user.ranking && (
-                          <div
-                            className={`absolute -bottom-1 -right-1 ${getRankingColor(
-                              user.ranking
-                            )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[24px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
-                          >
-                            {user.ranking}
-                          </div>
-                        )}
+                        <div
+                          className={`absolute -bottom-1 -right-1 ${getRankingColor(
+                            user.ranking || '0'
+                          )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[24px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
+                        >
+                          {user.ranking || '0'}
+                        </div>
                       </div>
                       <div className="ml-4">
                         <div className="font-medium text-gray-900">{user.name}</div>

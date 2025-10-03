@@ -38,7 +38,6 @@ export default function MatchDetail() {
 
   const isBooked = currentUser && bookings.some((booking: any) => booking.user_id === currentUser?.id);
 
-  const [showCalendarMenu, setShowCalendarMenu] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
@@ -49,6 +48,18 @@ export default function MatchDetail() {
       alert('Link copied to clipboard!');
       setShowShareMenu(false);
     });
+  };
+
+  const getAbbreviatedRankingLabel = (level: string) => {
+    const label = getRankingLabel(level);
+    const abbreviations: { [key: string]: string } = {
+      'Beginner': 'B',
+      'High Beginner': 'HB',
+      'Intermediate': 'I',
+      'Advanced': 'A',
+      'Pro': 'P',
+    };
+    return abbreviations[label] ? `${abbreviations[label]}+` : `${label}+`;
   };
 
   const handleShareEmail = () => {
@@ -178,7 +189,6 @@ export default function MatchDetail() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    setShowCalendarMenu(false);
   };
 
   if (isLoading) {
@@ -323,80 +333,25 @@ export default function MatchDetail() {
                 )}
                 {match.is_private && (
                   <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 text-sm font-medium rounded-full">
-                    🔒 Private Match
+                    🔒<span className="hidden sm:inline"> Private Match</span>
                   </span>
                 )}
                 {match.required_level !== null && match.required_level !== undefined && (
                   <span className={`inline-block px-3 py-1 ${getRankingColor(match.required_level.toString())} text-white text-sm font-medium rounded-full`}>
-                    {getRankingLabel(match.required_level.toString())} and above
+                    <span className="sm:hidden">{getAbbreviatedRankingLabel(match.required_level.toString())}</span>
+                    <span className="hidden sm:inline">{getRankingLabel(match.required_level.toString())} and above</span>
                   </span>
                 )}
                 {match.gender_requirement && match.gender_requirement !== 'all' && (
-                  <span className={`inline-block px-3 py-1 text-white text-sm font-medium rounded-full ${match.gender_requirement === 'male_only' ? 'bg-blue-500' : 'bg-pink-500'}`}>
-                    {match.gender_requirement === 'male_only' ? '♂ Lads' : '♀ Ladies'}
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 text-white text-sm font-medium rounded-full ${match.gender_requirement === 'male_only' ? 'bg-blue-500' : 'bg-pink-500'}`}>
+                    <span>{match.gender_requirement === 'male_only' ? '♂' : '♀'}</span>
+                    <span>{match.gender_requirement === 'male_only' ? 'Lads' : 'Ladies'}</span>
                   </span>
                 )}
               </div>
             </div>
             {/* Desktop buttons */}
             <div className="hidden md:flex gap-2">
-              {isBooked && (
-                <div className="relative group">
-                  <button
-                    onClick={() => setShowCalendarMenu(!showCalendarMenu)}
-                    className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg font-medium transition"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </button>
-                  {/* Tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10 whitespace-nowrap">
-                    <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg">
-                      Add to Calendar
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
-                        <div className="border-4 border-transparent border-t-gray-900"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {showCalendarMenu && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-10"
-                        onClick={() => setShowCalendarMenu(false)}
-                      />
-                      <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-                        <a
-                          href={getGoogleCalendarUrl()}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition"
-                          onClick={() => setShowCalendarMenu(false)}
-                        >
-                          <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
-                          </svg>
-                          <span className="text-sm font-medium text-gray-700">Google Calendar</span>
-                        </a>
-                        <button
-                          onClick={() => {
-                            downloadICS();
-                            setShowCalendarMenu(false);
-                          }}
-                          className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition w-full text-left"
-                        >
-                          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                          </svg>
-                          <span className="text-sm font-medium text-gray-700">Apple/Outlook (.ics)</span>
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
               {matchStatus !== 'completed' && (
                 <div className="relative group">
                   <button
@@ -424,6 +379,35 @@ export default function MatchDetail() {
                       onClick={() => setShowShareMenu(false)}
                     />
                     <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                      {isBooked && (
+                        <>
+                          <a
+                            href={getGoogleCalendarUrl()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition"
+                            onClick={() => setShowShareMenu(false)}
+                          >
+                            <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
+                            </svg>
+                            <span className="text-sm font-medium text-gray-700">Google Calendar</span>
+                          </a>
+                          <button
+                            onClick={() => {
+                              downloadICS();
+                              setShowShareMenu(false);
+                            }}
+                            className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition w-full text-left"
+                          >
+                            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span className="text-sm font-medium text-gray-700">Apple/Outlook (.ics)</span>
+                          </button>
+                          <div className="border-t border-gray-100 my-1"></div>
+                        </>
+                      )}
                       <button
                         onClick={handleCopyLink}
                         className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition w-full text-left"
