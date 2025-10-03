@@ -106,6 +106,18 @@ export default function Matches() {
     }
   };
 
+  const getAbbreviatedRankingLabel = (level: string) => {
+    const label = getRankingLabel(level);
+    const abbreviations: { [key: string]: string } = {
+      'Beginner': 'B',
+      'High Beginner': 'HB',
+      'Intermediate': 'I',
+      'Advanced': 'A',
+      'Pro': 'P',
+    };
+    return abbreviations[label] ? `${abbreviations[label]}+` : `${label}+`;
+  };
+
   const getShareUrl = (matchId: string) => `${window.location.origin}/matches/${matchId}`;
 
   const handleCopyLink = (e: React.MouseEvent, matchId: string) => {
@@ -302,9 +314,7 @@ export default function Matches() {
           <div className="flex items-center gap-2">
             <button
               onClick={async () => {
-                console.log('Enable button clicked!');
                 const granted = await requestPermission();
-                console.log('requestPermission returned:', granted);
                 if (granted) {
                   setShowNotificationBanner(false);
                 }
@@ -646,12 +656,12 @@ export default function Matches() {
                       )}
                       {match.required_level !== null && match.required_level !== undefined && (
                         <span className={`inline-block px-2 py-0.5 ${getRankingColor(match.required_level.toString())} text-white text-xs font-medium rounded-full`}>
-                          {getRankingLabel(match.required_level.toString())} and above
+                          {getAbbreviatedRankingLabel(match.required_level.toString())}
                         </span>
                       )}
                       {match.gender_requirement && match.gender_requirement !== 'all' && (
                         <span className={`inline-block px-2 py-0.5 text-white text-xs font-medium rounded-full ${match.gender_requirement === 'male_only' ? 'bg-blue-500' : 'bg-pink-500'}`}>
-                          {match.gender_requirement === 'male_only' ? '♂ Lads' : '♀ Ladies'}
+                          {match.gender_requirement === 'male_only' ? '♂' : '♀'}<span className="hidden sm:inline"> {match.gender_requirement === 'male_only' ? 'Lads' : 'Ladies'}</span>
                         </span>
                       )}
                       {(() => {

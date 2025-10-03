@@ -112,8 +112,6 @@ export async function getMatchById(id: string) {
   }
 
   // Fallback to direct query (will fail for private matches due to RLS, but works for public)
-  console.log('RPC function not available, falling back to direct query. Error:', rpcError);
-
   const { data, error } = await supabase
     .from('matches')
     .select(`

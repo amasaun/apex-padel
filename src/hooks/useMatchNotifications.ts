@@ -19,10 +19,8 @@ export function useMatchNotifications() {
       return false;
     }
 
-    console.log('Requesting notification permission...');
     try {
       const result = await Notification.requestPermission();
-      console.log('Permission result:', result);
       setPermission(result);
 
       if (result === 'denied') {
@@ -71,11 +69,8 @@ export function useMatchNotifications() {
 
   useEffect(() => {
     if (permission !== 'granted') {
-      console.log('Notifications not granted, permission:', permission);
       return;
     }
-
-    console.log('Setting up Supabase realtime subscription for notifications...');
 
     // Subscribe to new public matches
     const channel = supabase
@@ -89,16 +84,12 @@ export function useMatchNotifications() {
           filter: 'is_private=eq.false',
         },
         (payload) => {
-          console.log('🎾 New public match created!', payload.new);
           showNotification(payload.new);
         }
       )
-      .subscribe((status) => {
-        console.log('Supabase subscription status:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('Cleaning up Supabase subscription');
       supabase.removeChannel(channel);
     };
   }, [permission]);
