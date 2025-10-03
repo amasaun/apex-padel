@@ -132,15 +132,26 @@ export default function Matches() {
   const handleShareWhatsApp = (e: React.MouseEvent, match: any) => {
     e.preventDefault();
     e.stopPropagation();
-    const text = encodeURIComponent(
-      `🎾 Join me for Padel!\n\n` +
-      `📍 ${match.location}\n` +
-      `📅 ${formatDate(match.date)}\n` +
-      `⏰ ${formatTime(match.time)}\n` +
-      `⏱️ ${formatDuration(match.duration)}\n` +
-      `👥 ${match.available_slots} slots available\n\n` +
-      `Book here: ${getShareUrl(match.id)}`
-    );
+
+    let matchInfo = `🎾 Join me for Padel!\n\n`;
+    matchInfo += `📍 ${match.location}\n`;
+    matchInfo += `${LOCATION_DATA[match.location]?.address || ''}\n\n`;
+    matchInfo += `📅 ${formatDate(match.date)}\n`;
+    matchInfo += `⏰ ${formatTime(match.time)}\n`;
+    matchInfo += `⏱️ ${formatDuration(match.duration)}\n`;
+
+    if (match.required_level !== null && match.required_level !== undefined) {
+      matchInfo += `🎯 ${getRankingLabel(match.required_level.toString())} and above\n`;
+    }
+
+    if (match.gender_requirement && match.gender_requirement !== 'all') {
+      matchInfo += `${match.gender_requirement === 'male_only' ? '♂' : '♀'} ${match.gender_requirement === 'male_only' ? 'Lads only' : 'Ladies only'}\n`;
+    }
+
+    matchInfo += `\n👥 ${match.available_slots} slots available\n\n`;
+    matchInfo += `Book here: ${getShareUrl(match.id)}`;
+
+    const text = encodeURIComponent(matchInfo);
     window.open(`https://wa.me/?text=${text}`, '_blank');
     setActiveShareMenu(null);
   };
@@ -149,13 +160,23 @@ export default function Matches() {
     e.preventDefault();
     e.stopPropagation();
     const subject = encodeURIComponent(`Join me for Padel - ${match.title || 'Match'}`);
-    const body = encodeURIComponent(
-      `I'm playing padel at ${match.location} on ${formatDate(match.date)} at ${formatTime(match.time)}.\n\n` +
-      `Join me! Click here to book: ${getShareUrl(match.id)}\n\n` +
-      `Match Details:\n` +
-      `- Duration: ${formatDuration(match.duration)}\n` +
-      `- Available Slots: ${match.available_slots}/${match.max_players}`
-    );
+
+    let bodyText = `I'm playing padel at ${match.location} on ${formatDate(match.date)} at ${formatTime(match.time)}.\n\n`;
+    bodyText += `Location: ${LOCATION_DATA[match.location]?.address || ''}\n\n`;
+    bodyText += `Join me! Click here to book: ${getShareUrl(match.id)}\n\n`;
+    bodyText += `Match Details:\n`;
+    bodyText += `- Duration: ${formatDuration(match.duration)}\n`;
+    bodyText += `- Available Slots: ${match.available_slots}/${match.max_players}\n`;
+
+    if (match.required_level !== null && match.required_level !== undefined) {
+      bodyText += `- Minimum Level: ${getRankingLabel(match.required_level.toString())} and above\n`;
+    }
+
+    if (match.gender_requirement && match.gender_requirement !== 'all') {
+      bodyText += `- ${match.gender_requirement === 'male_only' ? 'Lads only' : 'Ladies only'}\n`;
+    }
+
+    const body = encodeURIComponent(bodyText);
     const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
 
     // Use a setTimeout to allow the event to finish propagating before changing location
@@ -174,12 +195,25 @@ export default function Matches() {
       return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     };
 
+    let details = `Padel match at ${match.location}\n`;
+    details += `Address: ${LOCATION_DATA[match.location]?.address || ''}\n\n`;
+    details += `Players: ${match.bookings.length}/${match.max_players}\n`;
+    details += `Duration: ${formatDuration(match.duration)}\n`;
+
+    if (match.required_level !== null && match.required_level !== undefined) {
+      details += `Minimum Level: ${getRankingLabel(match.required_level.toString())} and above\n`;
+    }
+
+    if (match.gender_requirement && match.gender_requirement !== 'all') {
+      details += `${match.gender_requirement === 'male_only' ? 'Lads only' : 'Ladies only'}\n`;
+    }
+
     const params = new URLSearchParams({
       action: 'TEMPLATE',
       text: `${match.title || 'Padel Match'} - ${match.location}`,
       dates: `${formatGoogleDate(startDateTime)}/${formatGoogleDate(endDateTime)}`,
-      details: `Padel match at ${match.location}\nPlayers: ${match.bookings.length}/${match.max_players}\nDuration: ${formatDuration(match.duration)}`,
-      location: match.location,
+      details: details,
+      location: LOCATION_DATA[match.location]?.address || match.location,
     });
 
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
@@ -196,6 +230,19 @@ export default function Matches() {
       return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     };
 
+    let description = `Padel match at ${match.location}\\n`;
+    description += `Address: ${LOCATION_DATA[match.location]?.address || ''}\\n\\n`;
+    description += `Players: ${match.bookings.length}/${match.max_players}\\n`;
+    description += `Duration: ${formatDuration(match.duration)}\\n`;
+
+    if (match.required_level !== null && match.required_level !== undefined) {
+      description += `Minimum Level: ${getRankingLabel(match.required_level.toString())} and above\\n`;
+    }
+
+    if (match.gender_requirement && match.gender_requirement !== 'all') {
+      description += `${match.gender_requirement === 'male_only' ? 'Lads only' : 'Ladies only'}\\n`;
+    }
+
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
@@ -203,8 +250,8 @@ export default function Matches() {
       `DTSTART:${formatDateTime(startDateTime)}`,
       `DTEND:${formatDateTime(endDateTime)}`,
       `SUMMARY:${match.title || 'Padel Match'} - ${match.location}`,
-      `DESCRIPTION:Padel match at ${match.location}\\nPlayers: ${match.bookings.length}/${match.max_players}\\nDuration: ${formatDuration(match.duration)}`,
-      `LOCATION:${match.location}`,
+      `DESCRIPTION:${description}`,
+      `LOCATION:${LOCATION_DATA[match.location]?.address || match.location}`,
       'END:VEVENT',
       'END:VCALENDAR',
     ].join('\r\n');
