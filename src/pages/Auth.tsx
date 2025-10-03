@@ -19,6 +19,7 @@ export default function Auth() {
     name: '',
     phone: '',
     ranking: '3.0',
+    gender: '' as 'female' | 'male' | 'rather_not_say' | '',
     inviteCode: '',
   });
 
@@ -57,6 +58,7 @@ export default function Auth() {
           name: formData.name,
           phone: formData.phone,
           ranking: formData.ranking,
+          gender: formData.gender || undefined,
           invited_by_code: formData.inviteCode,
         });
         setSuccess('Account created successfully!');
@@ -175,6 +177,24 @@ export default function Auth() {
               </div>
             )}
 
+            {/* Gender (signup only) */}
+            {mode === 'signup' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Gender (optional)
+                </label>
+                <select
+                  value={formData.gender}
+                  onChange={(e) => setFormData({ ...formData, gender: e.target.value as any })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                >
+                  <option value="">Prefer not to say</option>
+                  <option value="female">Female</option>
+                  <option value="male">Male</option>
+                  <option value="rather_not_say">Rather not say</option>
+                </select>
+              </div>
+            )}
 
             {/* Ranking (signup only) */}
             {mode === 'signup' && (

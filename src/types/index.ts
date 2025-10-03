@@ -7,6 +7,8 @@ export interface User {
   ranking?: string;
   is_admin?: boolean;
   invited_by_code?: string;
+  share_contact_info?: boolean;
+  gender?: 'female' | 'male' | 'rather_not_say';
   created_at: string;
 }
 
@@ -30,6 +32,8 @@ export interface Match {
   max_players: number;
   location: string;
   is_private?: boolean;
+  required_level?: number; // Minimum ranking required to join (null = all levels)
+  gender_requirement?: 'all' | 'male_only' | 'female_only'; // Gender requirement (defaults to 'all')
   created_by: string;
   created_at: string;
   bookings?: Booking[];

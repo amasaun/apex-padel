@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch } from '@/lib/api';
 import { getCurrentUserProfile } from '@/lib/auth';
-import { getRankingColor, formatTime, calculateEndTime, formatDuration } from '@/lib/utils';
+import { getRankingColor, formatTime, calculateEndTime, formatDuration, getRankingLabel } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
 import EditMatchModal from '@/components/EditMatchModal';
 import UserAvatar from '@/components/UserAvatar';
@@ -61,7 +61,8 @@ export default function MatchDetail() {
       `- Duration: ${formatDuration(match.duration)}\n` +
       `- Available Slots: ${match.available_slots}/${match.max_players}`
     );
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
+    window.location.href = mailtoLink;
     setShowShareMenu(false);
   };
 
@@ -191,6 +192,29 @@ export default function MatchDetail() {
         // TODO: Send cancellation email when enabled
         // await sendCancellationEmail({...});
       } else {
+        // Check if user meets the level requirement (unless they're the creator)
+        const isCreator = match.created_by === currentUser.id;
+        if (!isCreator && match.required_level !== null && match.required_level !== undefined) {
+          const userRanking = parseFloat(currentUser.ranking || '0');
+          if (userRanking < match.required_level) {
+            alert(`This match requires a minimum ranking of ${match.required_level} or above. Your current ranking is ${currentUser.ranking}.`);
+            return;
+          }
+        }
+
+        // Check if user meets the gender requirement (unless they're the creator)
+        if (!isCreator && match.gender_requirement && match.gender_requirement !== 'all') {
+          const userGender = currentUser.gender;
+          if (match.gender_requirement === 'male_only' && userGender !== 'male') {
+            alert('This match is for male players only.');
+            return;
+          }
+          if (match.gender_requirement === 'female_only' && userGender !== 'female') {
+            alert('This match is for female players only.');
+            return;
+          }
+        }
+
         // Book the slot
         await createBooking(match.id, currentUser.id);
 
@@ -255,21 +279,96 @@ export default function MatchDetail() {
                     🔒 Private Match
                   </span>
                 )}
+                {match.required_level !== null && match.required_level !== undefined && (
+                  <span className={`inline-block px-3 py-1 ${getRankingColor(match.required_level.toString())} text-white text-sm font-medium rounded-full`}>
+                    {getRankingLabel(match.required_level.toString())} and above
+                  </span>
+                )}
+                {match.gender_requirement && match.gender_requirement !== 'all' && (
+                  <span className={`inline-block px-3 py-1 text-white text-sm font-medium rounded-full ${match.gender_requirement === 'male_only' ? 'bg-blue-500' : 'bg-pink-500'}`}>
+                    {match.gender_requirement === 'male_only' ? '♂ Lads' : '♀ Ladies'}
+                  </span>
+                )}
               </div>
             </div>
             {/* Desktop buttons */}
             <div className="hidden md:flex gap-2">
+              {isBooked && (
+                <div className="relative group">
+                  <button
+                    onClick={() => setShowCalendarMenu(!showCalendarMenu)}
+                    className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg font-medium transition"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10 whitespace-nowrap">
+                    <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg">
+                      Add to Calendar
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                        <div className="border-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {showCalendarMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowCalendarMenu(false)}
+                      />
+                      <div className="absolute left-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
+                        <a
+                          href={getGoogleCalendarUrl()}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition"
+                          onClick={() => setShowCalendarMenu(false)}
+                        >
+                          <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
+                          </svg>
+                          <span className="text-sm font-medium text-gray-700">Google Calendar</span>
+                        </a>
+                        <button
+                          onClick={() => {
+                            downloadICS();
+                            setShowCalendarMenu(false);
+                          }}
+                          className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition w-full text-left"
+                        >
+                          <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                          </svg>
+                          <span className="text-sm font-medium text-gray-700">Apple/Outlook (.ics)</span>
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               {matchStatus !== 'completed' && (
-                <div className="relative">
+                <div className="relative group">
                   <button
                     onClick={() => setShowShareMenu(!showShareMenu)}
-                    className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition flex items-center gap-2"
+                    className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition flex items-center gap-2"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                     </svg>
-                    Share
                   </button>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10 whitespace-nowrap">
+                    <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg">
+                      Share
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                        <div className="border-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  </div>
 
                 {showShareMenu && (
                   <>
@@ -313,29 +412,68 @@ export default function MatchDetail() {
 
               {isCreator && matchStatus !== 'completed' && (
                 <>
-                  <button
-                    onClick={() => setIsEditModalOpen(true)}
-                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition"
-                  >
-                    Edit Match
-                  </button>
-                  {(matchStatus !== 'in-progress' || isAdmin) && (
+                  <div className="relative group">
                     <button
-                      onClick={handleCancelMatch}
-                      className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-medium transition"
+                      onClick={() => setIsEditModalOpen(true)}
+                      className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition"
                     >
-                      Cancel Match
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
                     </button>
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10 whitespace-nowrap">
+                      <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg">
+                        Edit Match
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                          <div className="border-4 border-transparent border-t-gray-900"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {(matchStatus !== 'in-progress' || isAdmin) && (
+                    <div className="relative group">
+                      <button
+                        onClick={handleCancelMatch}
+                        className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-medium transition"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                      {/* Tooltip */}
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10 whitespace-nowrap">
+                        <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg">
+                          Cancel Match
+                          <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                            <div className="border-4 border-transparent border-t-gray-900"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </>
               )}
               {isAdmin && matchStatus === 'completed' && (
-                <button
-                  onClick={handleCancelMatch}
-                  className="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-medium transition"
-                >
-                  Cancel Match
-                </button>
+                <div className="relative group">
+                  <button
+                    onClick={handleCancelMatch}
+                    className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-medium transition"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  {/* Tooltip */}
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10 whitespace-nowrap">
+                    <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg shadow-lg">
+                      Cancel Match
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                        <div className="border-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 
@@ -570,7 +708,7 @@ export default function MatchDetail() {
           </div>
         )}
 
-        <div className="mb-8">
+        <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="text-sm text-gray-600 mb-1">
               {matchStatus === 'completed' ? 'Total Slots' : 'Available Slots'}
@@ -582,6 +720,15 @@ export default function MatchDetail() {
               }
             </div>
           </div>
+
+          {match.required_level !== null && match.required_level !== undefined && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <div className="text-sm text-gray-600 mb-1">Minimum Player Level</div>
+              <div className={`inline-flex items-center gap-2 ${getRankingColor(match.required_level.toString())} text-white px-4 py-2 rounded-lg font-semibold`}>
+                {getRankingLabel(match.required_level.toString())} and above
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="mb-8">
@@ -677,52 +824,6 @@ export default function MatchDetail() {
           {match.available_slots === 0 && !isBooked && (
             <div className="flex-1 text-center py-3 bg-gray-50 rounded-lg border border-gray-200">
               <p className="text-gray-600 font-medium">This match is fully booked</p>
-            </div>
-          )}
-
-          {isBooked && (
-            <div className="relative hidden md:block">
-              <button
-                onClick={() => setShowCalendarMenu(!showCalendarMenu)}
-                className="p-3 bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 rounded-lg transition"
-                title="Add to Calendar"
-              >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </button>
-
-            {showCalendarMenu && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setShowCalendarMenu(false)}
-                />
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-20">
-                  <a
-                    href={getGoogleCalendarUrl()}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition"
-                    onClick={() => setShowCalendarMenu(false)}
-                  >
-                    <svg className="w-5 h-5 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
-                    </svg>
-                    <span className="text-sm font-medium text-gray-700">Google Calendar</span>
-                  </a>
-                  <button
-                    onClick={downloadICS}
-                    className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition w-full text-left"
-                  >
-                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                    </svg>
-                    <span className="text-sm font-medium text-gray-700">Apple/Outlook (.ics)</span>
-                  </button>
-                </div>
-              </>
-            )}
             </div>
           )}
         </div>

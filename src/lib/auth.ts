@@ -17,7 +17,7 @@ export interface AuthUser {
 export async function signUpWithEmail(
   email: string,
   password: string,
-  userData: { name: string; phone?: string; ranking?: string; invited_by_code?: string }
+  userData: { name: string; phone?: string; ranking?: string; gender?: string; invited_by_code?: string }
 ) {
   // First, sign up with Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -37,6 +37,7 @@ export async function signUpWithEmail(
       user_name: userData.name,
       user_phone: userData.phone || null,
       user_ranking: userData.ranking || '3.0',
+      user_gender: userData.gender || null,
       user_invited_by_code: userData.invited_by_code || null,
     }
   );

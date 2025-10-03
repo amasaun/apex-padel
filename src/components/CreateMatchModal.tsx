@@ -13,6 +13,16 @@ const DURATIONS = [
 ];
 const MAX_PLAYERS_OPTIONS = [4, 5, 6, 7, 8];
 
+const PLAYER_LEVELS = [
+  { value: null, label: 'All Levels', minRank: 0, maxRank: 7 },
+  { value: 0, label: 'Beginner (0.0 - 1.5)', minRank: 0, maxRank: 1.5 },
+  { value: 1.5, label: 'High Beginner (1.5 - 2.5)', minRank: 1.5, maxRank: 2.5 },
+  { value: 2.5, label: 'Intermediate (2.5 - 4.0)', minRank: 2.5, maxRank: 4.0 },
+  { value: 4.0, label: 'High Intermediate (4.0 - 5.0)', minRank: 4.0, maxRank: 5.0 },
+  { value: 5.0, label: 'Advanced (5.0 - 6.0)', minRank: 5.0, maxRank: 6.0 },
+  { value: 6.0, label: 'Pro / Elite (6.0 - 7.0)', minRank: 6.0, maxRank: 7.0 },
+];
+
 // Generate time options in 30-minute increments
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const hours = Math.floor(i / 2);
@@ -63,6 +73,8 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
     maxPlayers: 4,
     location: LOCATIONS[0],
     isPrivate: false,
+    requiredLevel: null as number | null,
+    genderRequirement: 'all' as 'all' | 'male_only' | 'female_only',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -114,6 +126,8 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
         max_players: formData.maxPlayers,
         location: formData.location,
         is_private: formData.isPrivate,
+        required_level: formData.requiredLevel !== null ? formData.requiredLevel : undefined,
+        gender_requirement: formData.genderRequirement,
         created_by: currentUser.id,
       });
 
@@ -126,6 +140,8 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
         maxPlayers: 4,
         location: LOCATIONS[0],
         isPrivate: false,
+        requiredLevel: null,
+        genderRequirement: 'all',
       });
       setErrors({});
 
@@ -281,6 +297,48 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Player Level Requirement */}
+          <div>
+            <label htmlFor="requiredLevel" className="block text-sm font-medium text-gray-700 mb-2">
+              Minimum Player Level
+            </label>
+            <select
+              id="requiredLevel"
+              value={formData.requiredLevel === null ? '' : String(formData.requiredLevel)}
+              onChange={(e) => setFormData({ ...formData, requiredLevel: e.target.value === '' ? null : parseFloat(e.target.value) })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              {PLAYER_LEVELS.map((level) => (
+                <option key={level.label} value={level.value === null ? '' : String(level.value)}>
+                  {level.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Players at this level or above can join. Select "All Levels" to allow everyone.
+            </p>
+          </div>
+
+          {/* Gender Requirement */}
+          <div>
+            <label htmlFor="genderRequirement" className="block text-sm font-medium text-gray-700 mb-2">
+              Player Gender
+            </label>
+            <select
+              id="genderRequirement"
+              value={formData.genderRequirement}
+              onChange={(e) => setFormData({ ...formData, genderRequirement: e.target.value as any })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="all">All Genders</option>
+              <option value="male_only">Male Only</option>
+              <option value="female_only">Female Only</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Select which genders can join this match.
+            </p>
           </div>
 
           {/* Privacy Toggle */}

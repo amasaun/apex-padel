@@ -17,6 +17,7 @@ export default function EditProfile() {
     phone: '',
     ranking: '',
     photo_url: '',
+    share_contact_info: false,
   });
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function EditProfile() {
         phone: profile.phone || '',
         ranking: profile.ranking || '3.0',
         photo_url: profile.photo_url || '',
+        share_contact_info: profile.share_contact_info || false,
       });
     } catch (err: any) {
       setError(err.message);
@@ -73,6 +75,7 @@ export default function EditProfile() {
         phone: formData.phone || undefined,
         ranking: formData.ranking,
         photo_url: formData.photo_url || undefined,
+        share_contact_info: formData.share_contact_info,
       });
 
       navigate(`/profile/${user.id}`);
@@ -173,6 +176,33 @@ export default function EditProfile() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="+1234567890"
             />
+          </div>
+
+          {/* Share Contact Info Toggle */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex-1">
+              <label htmlFor="shareContactInfo" className="block text-sm font-medium text-gray-900 cursor-pointer">
+                Share my contact information
+              </label>
+              <p className="text-xs text-gray-600 mt-1">
+                When enabled, your email and phone will be visible on your public profile
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.share_contact_info}
+              onClick={() => setFormData({ ...formData, share_contact_info: !formData.share_contact_info })}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                formData.share_contact_info ? 'bg-primary' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  formData.share_contact_info ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
 
           {/* Ranking */}

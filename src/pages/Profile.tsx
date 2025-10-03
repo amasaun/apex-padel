@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getRankingColor, getRankingLabel } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { User } from '@/types';
+import UserAvatar from '@/components/UserAvatar';
 
 export default function Profile() {
   const { id } = useParams<{ id: string }>();
@@ -49,10 +50,11 @@ export default function Profile() {
 
       <div className="bg-white rounded-lg shadow-sm p-8 border border-gray-200">
         <div className="flex flex-col md:flex-row items-center md:items-start gap-6 mb-8">
-          <img
-            src={user.photo_url}
-            alt={user.name}
-            className="w-32 h-32 rounded-full border-4 border-primary shadow-lg"
+          <UserAvatar
+            name={user.name}
+            photoUrl={user.photo_url}
+            size="xl"
+            className="border-4 border-primary shadow-lg"
           />
           <div className="text-center md:text-left flex-1">
             <h1 className="text-3xl font-bold text-gray-900 mb-3">{user.name}</h1>
@@ -70,12 +72,6 @@ export default function Profile() {
                 </div>
               </div>
             </div>
-
-            {user.email && (
-              <div className="text-gray-600">
-                <span className="text-sm">📧 {user.email}</span>
-              </div>
-            )}
           </div>
         </div>
 
@@ -90,9 +86,29 @@ export default function Profile() {
             </div>
             <div className="bg-gray-50 rounded-lg p-4">
               <div className="text-sm text-gray-600 mb-1">Contact</div>
-              <div className="text-sm font-medium text-gray-900">
-                {user.email || user.phone || 'Not provided'}
-              </div>
+              {user.share_contact_info ? (
+                <div className="space-y-1">
+                  {user.email && (
+                    <div className="text-sm font-medium text-gray-900">
+                      📧 {user.email}
+                    </div>
+                  )}
+                  {user.phone && (
+                    <div className="text-sm font-medium text-gray-900">
+                      📱 {user.phone}
+                    </div>
+                  )}
+                  {!user.email && !user.phone && (
+                    <div className="text-sm font-medium text-gray-900">
+                      Not provided
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm font-medium text-gray-900">
+                  Private
+                </div>
+              )}
             </div>
           </div>
         </div>

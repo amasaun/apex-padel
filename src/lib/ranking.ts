@@ -1,22 +1,18 @@
 export function getRankingLevel(ranking: string): string {
   const rank = parseFloat(ranking);
 
-  if (rank < 1.0) {
-    return 'Initiation';
-  } else if (rank >= 1.0 && rank <= 1.49) {
+  if (rank < 1.5) {
     return 'Beginner';
-  } else if (rank >= 1.5 && rank <= 2.4) {
-    return 'Initiation Intermediate';
-  } else if (rank >= 2.5 && rank <= 3.4) {
+  } else if (rank >= 1.5 && rank < 2.5) {
+    return 'High Beginner';
+  } else if (rank >= 2.5 && rank < 4.0) {
     return 'Intermediate';
-  } else if (rank >= 3.5 && rank <= 4.4) {
-    return 'Intermediate High';
-  } else if (rank >= 4.5 && rank <= 5.3) {
-    return 'Intermediate Advanced';
-  } else if (rank >= 5.4 && rank <= 5.9) {
-    return 'Competition';
+  } else if (rank >= 4.0 && rank < 5.0) {
+    return 'High Intermediate';
+  } else if (rank >= 5.0 && rank < 6.0) {
+    return 'Advanced';
   } else if (rank >= 6.0 && rank <= 7.0) {
-    return 'Professional';
+    return 'Pro / Elite';
   } else {
     return 'Unknown';
   }
@@ -25,22 +21,18 @@ export function getRankingLevel(ranking: string): string {
 export function getRankingColor(ranking: string): string {
   const rank = parseFloat(ranking);
 
-  if (rank < 1.0) {
-    return 'bg-gray-500'; // Initiation
-  } else if (rank >= 1.0 && rank <= 1.49) {
-    return 'bg-green-500'; // Beginner
-  } else if (rank >= 1.5 && rank <= 2.4) {
-    return 'bg-green-600'; // Initiation Intermediate
-  } else if (rank >= 2.5 && rank <= 3.4) {
+  if (rank < 1.5) {
+    return 'bg-gray-500'; // Beginner
+  } else if (rank >= 1.5 && rank < 2.5) {
+    return 'bg-green-500'; // High Beginner
+  } else if (rank >= 2.5 && rank < 4.0) {
     return 'bg-blue-500'; // Intermediate
-  } else if (rank >= 3.5 && rank <= 4.4) {
-    return 'bg-blue-600'; // Intermediate High
-  } else if (rank >= 4.5 && rank <= 5.3) {
-    return 'bg-orange-500'; // Intermediate Advanced
-  } else if (rank >= 5.4 && rank <= 5.9) {
-    return 'bg-orange-600'; // Competition
+  } else if (rank >= 4.0 && rank < 5.0) {
+    return 'bg-blue-600'; // High Intermediate
+  } else if (rank >= 5.0 && rank < 6.0) {
+    return 'bg-orange-500'; // Advanced
   } else if (rank >= 6.0 && rank <= 7.0) {
-    return 'bg-purple-600'; // Professional
+    return 'bg-purple-600'; // Pro / Elite
   } else {
     return 'bg-gray-500';
   }

@@ -15,6 +15,16 @@ const DURATIONS = [
 ];
 const MAX_PLAYERS_OPTIONS = [4, 5, 6, 7, 8];
 
+const PLAYER_LEVELS = [
+  { value: null, label: 'All Levels', minRank: 0, maxRank: 7 },
+  { value: 0, label: 'Beginner (0.0 - 1.5)', minRank: 0, maxRank: 1.5 },
+  { value: 1.5, label: 'High Beginner (1.5 - 2.5)', minRank: 1.5, maxRank: 2.5 },
+  { value: 2.5, label: 'Intermediate (2.5 - 4.0)', minRank: 2.5, maxRank: 4.0 },
+  { value: 4.0, label: 'High Intermediate (4.0 - 5.0)', minRank: 4.0, maxRank: 5.0 },
+  { value: 5.0, label: 'Advanced (5.0 - 6.0)', minRank: 5.0, maxRank: 6.0 },
+  { value: 6.0, label: 'Pro / Elite (6.0 - 7.0)', minRank: 6.0, maxRank: 7.0 },
+];
+
 // Generate time options in 30-minute increments
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const hours = Math.floor(i / 2);
@@ -47,6 +57,8 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
     maxPlayers: match.max_players,
     location: match.location,
     isPrivate: match.is_private || false,
+    requiredLevel: (match.required_level !== null && match.required_level !== undefined) ? match.required_level : null,
+    genderRequirement: match.gender_requirement || 'all',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>(
@@ -66,6 +78,8 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
         maxPlayers: match.max_players,
         location: match.location,
         isPrivate: match.is_private || false,
+        requiredLevel: (match.required_level !== null && match.required_level !== undefined) ? match.required_level : null,
+        genderRequirement: match.gender_requirement || 'all',
       });
       setSelectedPlayers(match.bookings.map((b) => b.user_id));
 
@@ -120,6 +134,8 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
         max_players: formData.maxPlayers,
         location: formData.location,
         is_private: formData.isPrivate,
+        required_level: formData.requiredLevel !== null ? formData.requiredLevel : undefined,
+        gender_requirement: formData.genderRequirement,
       });
 
       // Update players
@@ -139,7 +155,32 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
     if (selectedPlayers.includes(userId)) {
       setSelectedPlayers(selectedPlayers.filter((id) => id !== userId));
     } else {
+      // Check if adding a new player
       if (selectedPlayers.length < formData.maxPlayers) {
+        const player = allUsers.find(u => u.id === userId);
+        if (player) {
+          // Check if player meets the level requirement
+          if (formData.requiredLevel !== null && formData.requiredLevel !== undefined) {
+            const playerRanking = parseFloat(player.ranking || '0');
+            if (playerRanking < formData.requiredLevel) {
+              alert(`${player.name} does not meet the minimum ranking requirement of ${formData.requiredLevel}. Their current ranking is ${player.ranking}.`);
+              return;
+            }
+          }
+
+          // Check if player meets the gender requirement
+          if (formData.genderRequirement && formData.genderRequirement !== 'all') {
+            const playerGender = player.gender;
+            if (formData.genderRequirement === 'male_only' && playerGender !== 'male') {
+              alert(`${player.name} cannot be added. This match is for male players only.`);
+              return;
+            }
+            if (formData.genderRequirement === 'female_only' && playerGender !== 'female') {
+              alert(`${player.name} cannot be added. This match is for female players only.`);
+              return;
+            }
+          }
+        }
         setSelectedPlayers([...selectedPlayers, userId]);
       }
     }
@@ -152,6 +193,20 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
   const filteredAvailableUsers = allUsers.filter((user) => {
     if (selectedPlayers.includes(user.id)) return false;
     if (!searchQuery) return false;
+
+    // Check if user meets the level requirement
+    if (formData.requiredLevel !== null && formData.requiredLevel !== undefined) {
+      const userRanking = parseFloat(user.ranking || '0');
+      if (userRanking < formData.requiredLevel) return false;
+    }
+
+    // Check if user meets the gender requirement
+    if (formData.genderRequirement && formData.genderRequirement !== 'all') {
+      const userGender = user.gender;
+      if (formData.genderRequirement === 'male_only' && userGender !== 'male') return false;
+      if (formData.genderRequirement === 'female_only' && userGender !== 'female') return false;
+    }
+
     const query = searchQuery.toLowerCase();
     return (
       user.name.toLowerCase().includes(query) ||
@@ -302,6 +357,48 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Player Level Requirement */}
+          <div>
+            <label htmlFor="requiredLevel" className="block text-sm font-medium text-gray-700 mb-2">
+              Minimum Player Level
+            </label>
+            <select
+              id="requiredLevel"
+              value={formData.requiredLevel === null ? '' : String(formData.requiredLevel)}
+              onChange={(e) => setFormData({ ...formData, requiredLevel: e.target.value === '' ? null : parseFloat(e.target.value) })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              {PLAYER_LEVELS.map((level) => (
+                <option key={level.label} value={level.value === null ? '' : String(level.value)}>
+                  {level.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Players at this level or above can join. Select "All Levels" to allow everyone.
+            </p>
+          </div>
+
+          {/* Gender Requirement */}
+          <div>
+            <label htmlFor="genderRequirement" className="block text-sm font-medium text-gray-700 mb-2">
+              Player Gender
+            </label>
+            <select
+              id="genderRequirement"
+              value={formData.genderRequirement}
+              onChange={(e) => setFormData({ ...formData, genderRequirement: e.target.value as any })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="all">All Genders</option>
+              <option value="male_only">Male Only</option>
+              <option value="female_only">Female Only</option>
+            </select>
+            <p className="mt-1 text-xs text-gray-500">
+              Select which genders can join this match.
+            </p>
           </div>
 
           {/* Privacy Toggle */}
