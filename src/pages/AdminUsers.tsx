@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { getUsers, updateUser } from '@/lib/api';
 import { makeUserAdmin, removeUserAdmin, isCurrentUserAdmin } from '@/lib/auth';
 import { User } from '@/types';
-import { getRankingColor } from '@/lib/utils';
+import { getRankingColor, formatRanking } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import UserAvatar from '@/components/UserAvatar';
 
@@ -207,7 +207,7 @@ export default function AdminUsers() {
                             user.ranking || '0'
                           )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[24px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
                         >
-                          {user.ranking || '0'}
+                          {formatRanking(user.ranking)}
                         </div>
                       </div>
                       <div className="ml-4">
@@ -257,7 +257,7 @@ export default function AdminUsers() {
                         onClick={() => setEditingRanking({userId: user.id, value: user.ranking || ''})}
                         className="text-primary hover:text-primary-dark font-medium flex items-center gap-1"
                       >
-                        {user.ranking || 'N/A'}
+                        {user.ranking ? formatRanking(user.ranking) : 'N/A'}
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>

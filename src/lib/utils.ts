@@ -61,3 +61,9 @@ export function getAvatarColor(name: string): { bg: string; text: string } {
 
   return colors[index];
 }
+
+export function formatRanking(ranking: string | number | null | undefined): string {
+  if (ranking === null || ranking === undefined) return '0.00';
+  const num = typeof ranking === 'string' ? parseFloat(ranking) : ranking;
+  return num.toFixed(2);
+}

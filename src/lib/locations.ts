@@ -16,7 +16,7 @@ export const LOCATION_DATA: Record<string, LocationInfo> = {
     name: 'Padel Up - Culver City',
     logo: 'https://cdn.prod.website-files.com/6657bfd4bd5e6513709cecf5/66635e7f6ca978c79be4b35f_logo-notext.svg',
     address: '3007 Hauser Blvd, Los Angeles, CA 90016',
-    coordinates: [34.0268, -118.3409],
+    coordinates: [34.0264536, -118.3652175],
   },
   'The Padel Courts - Hollywood': {
     name: 'The Padel Courts - Hollywood',
