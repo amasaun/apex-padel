@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch, getUserById } from '@/lib/api';
 import { getCurrentUserProfile } from '@/lib/auth';
-import { getRankingColor, formatTime, calculateEndTime, formatDuration, getRankingLabel } from '@/lib/utils';
+import { getRankingColor, formatTime, calculateEndTime, formatDuration, getRankingLabel, formatRanking } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
 import { sendCreatorBookingNotification, sendCreatorCancellationNotification } from '@/lib/email';
 import { getPrimaryInviteCode } from '@/lib/invites';
@@ -292,7 +292,7 @@ export default function MatchDetail() {
         if (!userIsCreator && match.required_level !== null && match.required_level !== undefined) {
           const userRanking = parseFloat(currentUser.ranking || '0');
           if (userRanking < match.required_level) {
-            alert(`This match requires a minimum ranking of ${match.required_level} or above. Your current ranking is ${currentUser.ranking}.`);
+            alert(`This match requires a minimum ranking of ${formatRanking(match.required_level)} or above. Your current ranking is ${formatRanking(currentUser.ranking)}.`);
             return;
           }
         }
@@ -494,7 +494,7 @@ export default function MatchDetail() {
                 </div>
               )}
 
-              {isCreator && matchStatus !== 'completed' && (
+              {(isCreator || isAdmin) && matchStatus !== 'completed' && (
                 <>
                   <div className="relative group">
                     <button
@@ -515,7 +515,7 @@ export default function MatchDetail() {
                       </div>
                     </div>
                   </div>
-                  {(matchStatus !== 'in-progress' || isAdmin) && (
+                  {isCreator && matchStatus !== 'in-progress' && (
                     <div className="relative group">
                       <button
                         onClick={handleCancelMatch}
@@ -657,7 +657,7 @@ export default function MatchDetail() {
                       </>
                     )}
 
-                    {isCreator && matchStatus !== 'completed' && (
+                    {(isCreator || isAdmin) && matchStatus !== 'completed' && (
                       <>
                         <div className="my-1 border-t border-gray-200"></div>
                         <div className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
@@ -675,7 +675,7 @@ export default function MatchDetail() {
                           </svg>
                           <span className="text-sm font-medium text-gray-700">Edit Match</span>
                         </button>
-                        {(matchStatus !== 'in-progress' || isAdmin) && (
+                        {isCreator && matchStatus !== 'in-progress' && (
                           <button
                             onClick={() => {
                               handleCancelMatch();
@@ -837,7 +837,7 @@ export default function MatchDetail() {
                       booking.user.ranking || '0'
                     )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
                   >
-                    {booking.user.ranking}
+                    {formatRanking(booking.user.ranking)}
                   </div>
                   {/* Instant tooltip */}
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
@@ -863,7 +863,7 @@ export default function MatchDetail() {
                     )}
                   </div>
                   <div className={`text-sm ${getRankingColor(booking.user.ranking || '0')} bg-opacity-10 inline-block px-2 py-0.5 rounded`}>
-                    Rank: {booking.user.ranking}
+                    Rank: {formatRanking(booking.user.ranking)}
                   </div>
                 </div>
               </Link>
@@ -913,7 +913,7 @@ export default function MatchDetail() {
         </div>
       </div>
 
-      {isCreator && matchStatus !== 'completed' && (
+      {(isCreator || isAdmin) && matchStatus !== 'completed' && (
         <EditMatchModal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}

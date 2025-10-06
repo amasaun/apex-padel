@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { MatchWithDetails, User } from '@/types';
 import { LOCATION_DATA } from '@/lib/locations';
-import { getRankingColor } from '@/lib/utils';
+import { getRankingColor, formatRanking } from '@/lib/utils';
 import { updateMatch, getUsers, updateMatchPlayers } from '@/lib/api';
 import UserAvatar from './UserAvatar';
 
@@ -163,7 +163,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
           if (formData.requiredLevel !== null && formData.requiredLevel !== undefined) {
             const playerRanking = parseFloat(player.ranking || '0');
             if (playerRanking < formData.requiredLevel) {
-              alert(`${player.name} does not meet the minimum ranking requirement of ${formData.requiredLevel}. Their current ranking is ${player.ranking}.`);
+              alert(`${player.name} does not meet the minimum ranking requirement of ${formatRanking(formData.requiredLevel)}. Their current ranking is ${formatRanking(player.ranking)}.`);
               return;
             }
           }
@@ -456,12 +456,12 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
                             user.ranking || '0'
                           )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
                         >
-                          {user.ranking}
+                          {formatRanking(user.ranking)}
                         </div>
                       </div>
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">{user.name}</div>
-                        <div className="text-sm text-gray-500">Rank: {user.ranking}</div>
+                        <div className="text-sm text-gray-500">Rank: {formatRanking(user.ranking)}</div>
                       </div>
                       <button
                         type="button"
@@ -512,12 +512,12 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
                                   user.ranking || '0'
                                 )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
                               >
-                                {user.ranking}
+                                {formatRanking(user.ranking)}
                               </div>
                             </div>
                             <div className="flex-1 text-left">
                               <div className="font-medium text-gray-900">{user.name}</div>
-                              <div className="text-sm text-gray-500">Rank: {user.ranking}</div>
+                              <div className="text-sm text-gray-500">Rank: {formatRanking(user.ranking)}</div>
                             </div>
                           </button>
                         ))}

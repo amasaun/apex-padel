@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getMatches, getLocations } from '@/lib/api';
 import { getCurrentUserProfile } from '@/lib/auth';
-import { getRankingColor, formatTime, formatDuration, calculateEndTime, getRankingLabel } from '@/lib/utils';
+import { getRankingColor, formatTime, formatDuration, calculateEndTime, getRankingLabel, formatRanking } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
 import { getPrimaryInviteCode } from '@/lib/invites';
 import CreateMatchModal from '@/components/CreateMatchModal';
@@ -957,7 +957,7 @@ export default function Matches() {
                             booking.user.ranking || '0'
                           )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
                         >
-                          {booking.user.ranking}
+                          {formatRanking(booking.user.ranking)}
                         </div>
                         {booking.user.id === match.created_by && (
                           <div className="absolute -top-1 -left-1 bg-blue-500 text-white rounded-full p-0.5 border-2 border-white shadow-sm" title="Match Creator">

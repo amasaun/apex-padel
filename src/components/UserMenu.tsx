@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getCurrentUserProfile, signOut, isCurrentUserAdmin } from '@/lib/auth';
 import { User } from '@/types';
-import { getRankingColor } from '@/lib/utils';
+import { getRankingColor, formatRanking } from '@/lib/utils';
 import UserAvatar from './UserAvatar';
 
 export default function UserMenu() {
@@ -80,7 +80,7 @@ export default function UserMenu() {
                 user.ranking
               )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
             >
-              {user.ranking}
+              {formatRanking(user.ranking)}
             </div>
           )}
         </div>
