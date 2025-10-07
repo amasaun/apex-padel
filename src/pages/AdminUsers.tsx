@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getUsers, updateUser } from '@/lib/api';
 import { makeUserAdmin, removeUserAdmin, isCurrentUserAdmin } from '@/lib/auth';
 import { User } from '@/types';
@@ -8,16 +8,30 @@ import { supabase } from '@/lib/supabase';
 import UserAvatar from '@/components/UserAvatar';
 
 export default function AdminUsers() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingRanking, setEditingRanking] = useState<{userId: string, value: string} | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAdmin();
     loadUsers();
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.action-menu')) {
+        setOpenMenuId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const checkAdmin = async () => {
@@ -83,6 +97,37 @@ export default function AdminUsers() {
     } catch (err: any) {
       alert('Failed to delete user: ' + err.message);
     }
+  };
+
+  const isNewUser = (createdAt: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const userDate = new Date(createdAt);
+    userDate.setHours(0, 0, 0, 0);
+    return today.getTime() === userDate.getTime();
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const handleRowClick = (userId: string, event: React.MouseEvent<HTMLTableRowElement>) => {
+    // Don't navigate if clicking on interactive elements
+    const target = event.target as HTMLElement;
+    if (
+      target.closest('button') ||
+      target.closest('input') ||
+      target.closest('a') ||
+      target.closest('.action-menu')
+    ) {
+      return;
+    }
+    navigate(`/profile/${userId}`);
   };
 
   const filteredUsers = users
@@ -183,6 +228,9 @@ export default function AdminUsers() {
                   Ranking
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Joined
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Admin
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -192,7 +240,11 @@ export default function AdminUsers() {
             </thead>
             <tbody className="divide-y divide-gray-200">
               {filteredUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr
+                  key={user.id}
+                  onClick={(e) => handleRowClick(user.id, e)}
+                  className="hover:bg-gray-50 cursor-pointer"
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="relative">
@@ -265,6 +317,18 @@ export default function AdminUsers() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-500">
+                        {formatDate(user.created_at)}
+                      </span>
+                      {isNewUser(user.created_at) && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 animate-pulse">
+                          NEW
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     {user.is_admin ? (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                         Admin
@@ -276,23 +340,49 @@ export default function AdminUsers() {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <div className="flex items-center gap-3">
+                    <div className="relative action-menu">
                       <button
-                        onClick={() => handleToggleAdmin(user.id, user.is_admin || false)}
-                        className={`${
-                          user.is_admin
-                            ? 'text-orange-600 hover:text-orange-700'
-                            : 'text-primary hover:text-primary-dark'
-                        } font-medium`}
+                        onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition"
                       >
-                        {user.is_admin ? 'Remove Admin' : 'Make Admin'}
+                        <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
                       </button>
-                      <button
-                        onClick={() => handleDeleteUser(user.id, user.name)}
-                        className="text-red-600 hover:text-red-700 font-medium"
-                      >
-                        Delete
-                      </button>
+
+                      {openMenuId === user.id && (
+                        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                          <button
+                            onClick={() => {
+                              handleToggleAdmin(user.id, user.is_admin || false);
+                              setOpenMenuId(null);
+                            }}
+                            className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition flex items-center gap-2 ${
+                              user.is_admin
+                                ? 'text-orange-600 hover:text-orange-700'
+                                : 'text-primary hover:text-primary-dark'
+                            }`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            {user.is_admin ? 'Remove Admin' : 'Make Admin'}
+                          </button>
+                          <div className="border-t border-gray-100 my-1"></div>
+                          <button
+                            onClick={() => {
+                              handleDeleteUser(user.id, user.name);
+                              setOpenMenuId(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition flex items-center gap-2"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete User
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>

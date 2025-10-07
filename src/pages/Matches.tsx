@@ -66,6 +66,13 @@ export default function Matches() {
     }
   };
 
+  const isMatchStartingSoon = (dateStr: string, timeStr: string) => {
+    const now = new Date();
+    const matchStartTime = new Date(`${dateStr}T${timeStr}`);
+    const minutesUntilStart = (matchStartTime.getTime() - now.getTime()) / (1000 * 60);
+    return minutesUntilStart > 0 && minutesUntilStart <= 90;
+  };
+
   // Sort and filter matches
   const filteredMatches = useMemo(() => {
     let result = [...matches].sort((a, b) => {
@@ -747,6 +754,11 @@ export default function Matches() {
                       </div>
                     )}
                     <div className="flex items-center gap-1">
+                      {isMatchStartingSoon(match.date, match.time) && !isInProgress && !isCompleted && (
+                        <span className="inline-block px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full animate-pulse border border-orange-300">
+                          ⏰ Starting Soon
+                        </span>
+                      )}
                       {isInProgress && (
                         <span className="inline-block px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-medium rounded-full">
                           🔴 In Progress

@@ -257,6 +257,13 @@ export default function MatchDetail() {
     }
   };
 
+  const isMatchStartingSoon = (dateStr: string, timeStr: string) => {
+    const now = new Date();
+    const matchStartTime = new Date(`${dateStr}T${timeStr}`);
+    const minutesUntilStart = (matchStartTime.getTime() - now.getTime()) / (1000 * 60);
+    return minutesUntilStart > 0 && minutesUntilStart <= 90;
+  };
+
   const matchStatus = match ? getMatchStatus(match.date, match.time, match.duration) : 'upcoming';
 
   const handleBookSlot = async () => {
@@ -374,6 +381,11 @@ export default function MatchDetail() {
                 {match.title || 'Match Details'}
               </h1>
               <div className="flex items-center gap-2 mt-2">
+                {match && isMatchStartingSoon(match.date, match.time) && matchStatus !== 'in-progress' && matchStatus !== 'completed' && (
+                  <span className="inline-block px-3 py-1 bg-orange-100 text-orange-700 text-sm font-bold rounded-full animate-pulse border border-orange-300">
+                    ⏰ Starting Soon
+                  </span>
+                )}
                 {matchStatus === 'in-progress' && (
                   <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-700 text-sm font-medium rounded-full">
                     🔴 In Progress
