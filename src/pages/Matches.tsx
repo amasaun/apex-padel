@@ -20,6 +20,7 @@ export default function Matches() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showMyMatchesOnly, setShowMyMatchesOnly] = useState(false);
   const [showPastMatches, setShowPastMatches] = useState(false);
+  const [showFullMatches, setShowFullMatches] = useState(false);
   const [showNotificationBanner, setShowNotificationBanner] = useState(true);
 
   // Notification hook
@@ -95,6 +96,25 @@ export default function Matches() {
       });
     }
 
+    // Filter out full matches by default (unless user is creator or has booked)
+    if (!showFullMatches) {
+      result = result.filter(match => {
+        const isFull = match.available_slots === 0;
+
+        // Always show if not full
+        if (!isFull) return true;
+
+        // Always show if user is the creator
+        if (currentUser && match.created_by === currentUser.id) return true;
+
+        // Always show if user has booked the match
+        if (currentUser && match.bookings.some((booking: any) => booking.user_id === currentUser.id)) return true;
+
+        // Otherwise, hide full matches
+        return false;
+      });
+    }
+
     // Filter to show only user's matches if toggle is on
     if (showMyMatchesOnly && currentUser) {
       result = result.filter(match =>
@@ -104,7 +124,7 @@ export default function Matches() {
     }
 
     return result;
-  }, [matches, selectedLocation, showMyMatchesOnly, currentUser, showPastMatches]);
+  }, [matches, selectedLocation, showMyMatchesOnly, currentUser, showPastMatches, showFullMatches]);
 
 
   const formatDate = (dateStr: string) => {
@@ -570,8 +590,14 @@ export default function Matches() {
               </button>
             </div>
           </div>
-          {/* Show Completed Matches link - Mobile and Desktop */}
-          <div className="mb-4">
+          {/* Show Completed Matches and Full Matches links - Mobile and Desktop */}
+          <div className="mb-4 flex gap-4">
+            <button
+              onClick={() => setShowFullMatches(!showFullMatches)}
+              className="text-sm text-gray-600 hover:text-gray-900 font-medium underline"
+            >
+              {showFullMatches ? 'Hide' : 'Show'} Full Matches
+            </button>
             <button
               onClick={() => setShowPastMatches(!showPastMatches)}
               className="text-sm text-gray-600 hover:text-gray-900 font-medium underline"
@@ -609,8 +635,14 @@ export default function Matches() {
             </div>
           </div>
 
-          {/* Show Completed Matches link */}
-          <div className="mb-4">
+          {/* Show Completed Matches and Full Matches links */}
+          <div className="mb-4 flex gap-4">
+            <button
+              onClick={() => setShowFullMatches(!showFullMatches)}
+              className="text-sm text-gray-600 hover:text-gray-900 font-medium underline"
+            >
+              {showFullMatches ? 'Hide' : 'Show'} Full Matches
+            </button>
             <button
               onClick={() => setShowPastMatches(!showPastMatches)}
               className="text-sm text-gray-600 hover:text-gray-900 font-medium underline"
