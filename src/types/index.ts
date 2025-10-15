@@ -9,6 +9,8 @@ export interface User {
   invited_by_code?: string;
   share_contact_info?: boolean;
   gender?: 'female' | 'male' | 'rather_not_say';
+  venmo_username?: string;
+  zelle_handle?: string;
   created_at: string;
 }
 
@@ -34,6 +36,7 @@ export interface Match {
   is_private?: boolean;
   required_level?: number; // Minimum ranking required to join (null = all levels)
   gender_requirement?: 'all' | 'male_only' | 'female_only'; // Gender requirement (defaults to 'all')
+  total_cost?: number; // Total cost paid for the court (will be split among all bookings)
   created_by: string;
   created_at: string;
   bookings?: Booking[];
@@ -45,6 +48,16 @@ export interface Booking {
   user_id: string;
   created_at: string;
   user?: User;
+}
+
+export interface BookingPayment {
+  id: string;
+  booking_id: string;
+  amount_paid: number;
+  marked_as_paid: boolean;
+  marked_at?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface MatchWithDetails extends Match {

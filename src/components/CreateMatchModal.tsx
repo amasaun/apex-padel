@@ -75,6 +75,7 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
     isPrivate: false,
     requiredLevel: null as number | null,
     genderRequirement: 'all' as 'all' | 'male_only' | 'female_only',
+    totalCost: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -128,6 +129,7 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
         is_private: formData.isPrivate,
         required_level: formData.requiredLevel !== null ? formData.requiredLevel : undefined,
         gender_requirement: formData.genderRequirement,
+        total_cost: formData.totalCost ? parseFloat(formData.totalCost) : undefined,
         created_by: currentUser.id,
       });
 
@@ -142,6 +144,7 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
         isPrivate: false,
         requiredLevel: null,
         genderRequirement: 'all',
+        totalCost: '',
       });
       setErrors({});
 
@@ -338,6 +341,29 @@ export default function CreateMatchModal({ isOpen, onClose, onSuccess }: CreateM
             </select>
             <p className="mt-1 text-xs text-gray-500">
               Select which genders can join this match.
+            </p>
+          </div>
+
+          {/* Total Cost */}
+          <div>
+            <label htmlFor="totalCost" className="block text-sm font-medium text-gray-700 mb-2">
+              Total Court Cost (optional)
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <input
+                type="number"
+                id="totalCost"
+                step="0.01"
+                min="0"
+                value={formData.totalCost}
+                onChange={(e) => setFormData({ ...formData, totalCost: e.target.value })}
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="0.00"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Enter the total amount you paid for the court. This will be split equally among all players who book.
             </p>
           </div>
 

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Match, User, Booking, MatchWithDetails, InviteCode } from '@/types';
+import { Match, User, Booking, MatchWithDetails, InviteCode, BookingPayment } from '@/types';
 
 // ============================================
 // USERS
@@ -396,4 +396,83 @@ export async function deleteLocation(id: string) {
   const { error } = await supabase.from('locations').delete().eq('id', id);
 
   if (error) throw error;
+}
+
+// ============================================
+// BOOKING PAYMENTS
+// ============================================
+
+export async function getPaymentsByMatchId(matchId: string) {
+  // Get all bookings for the match
+  const { data: bookings, error: bookingsError } = await supabase
+    .from('bookings')
+    .select('id')
+    .eq('match_id', matchId);
+
+  if (bookingsError) throw bookingsError;
+  if (!bookings || bookings.length === 0) return [];
+
+  const bookingIds = bookings.map(b => b.id);
+
+  // Get payment records for these bookings
+  const { data, error } = await supabase
+    .from('booking_payments')
+    .select('*')
+    .in('booking_id', bookingIds);
+
+  if (error) throw error;
+  return data as BookingPayment[];
+}
+
+export async function getPaymentByBookingId(bookingId: string) {
+  const { data, error } = await supabase
+    .from('booking_payments')
+    .select('*')
+    .eq('booking_id', bookingId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as BookingPayment | null;
+}
+
+export async function createOrUpdatePayment(bookingId: string, amountPaid: number, markedAsPaid: boolean) {
+  // Check if payment record exists
+  const existing = await getPaymentByBookingId(bookingId);
+
+  if (existing) {
+    // Update existing
+    const { data, error } = await supabase
+      .from('booking_payments')
+      .update({
+        amount_paid: amountPaid,
+        marked_as_paid: markedAsPaid,
+        marked_at: markedAsPaid ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('booking_id', bookingId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as BookingPayment;
+  } else {
+    // Create new
+    const { data, error } = await supabase
+      .from('booking_payments')
+      .insert({
+        booking_id: bookingId,
+        amount_paid: amountPaid,
+        marked_as_paid: markedAsPaid,
+        marked_at: markedAsPaid ? new Date().toISOString() : null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as BookingPayment;
+  }
+}
+
+export async function markPaymentAsPaid(bookingId: string, amountPaid: number) {
+  return createOrUpdatePayment(bookingId, amountPaid, true);
 }
