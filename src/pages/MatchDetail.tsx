@@ -5,7 +5,7 @@ import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch, 
 import { getCurrentUserProfile } from '@/lib/auth';
 import { getRankingColor, formatTime, calculateEndTime, formatDuration, getRankingLabel, formatRanking } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
-import { sendCreatorBookingNotification, sendCreatorCancellationNotification } from '@/lib/email';
+// import { sendCreatorBookingNotification, sendCreatorCancellationNotification } from '@/lib/email';
 import { getPrimaryInviteCode } from '@/lib/invites';
 import EditMatchModal from '@/components/EditMatchModal';
 import UserAvatar from '@/components/UserAvatar';
@@ -376,22 +376,22 @@ export default function MatchDetail() {
         await deleteBookingByUserAndMatch(match.id, currentUser.id);
 
         // Notify creator if someone else cancelled
-        if (!userIsCreator && matchCreator?.email) {
-          const updatedMatch = await refetch();
-          const newAvailableSlots = updatedMatch.data?.available_slots || 0;
-
-          await sendCreatorCancellationNotification({
-            creatorEmail: matchCreator.email,
-            creatorName: matchCreator.name,
-            playerName: currentUser.name,
-            matchTitle: match.title || 'Padel Match',
-            matchDate: new Date(match.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
-            matchTime: formatTime(match.time),
-            location: match.location,
-            availableSlots: newAvailableSlots,
-            maxPlayers: match.max_players,
-          });
-        }
+        // TODO: Implement server-side email via Supabase Edge Function
+        // if (!userIsCreator && matchCreator?.email) {
+        //   const updatedMatch = await refetch();
+        //   const newAvailableSlots = updatedMatch.data?.available_slots || 0;
+        //   await sendCreatorCancellationNotification({
+        //     creatorEmail: matchCreator.email,
+        //     creatorName: matchCreator.name,
+        //     playerName: currentUser.name,
+        //     matchTitle: match.title || 'Padel Match',
+        //     matchDate: new Date(match.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+        //     matchTime: formatTime(match.time),
+        //     location: match.location,
+        //     availableSlots: newAvailableSlots,
+        //     maxPlayers: match.max_players,
+        //   });
+        // }
       } else {
         // Check if user meets the level requirement (unless they're the creator)
         if (!userIsCreator && match.required_level !== null && match.required_level !== undefined) {
@@ -419,22 +419,22 @@ export default function MatchDetail() {
         await createBooking(match.id, currentUser.id);
 
         // Notify creator if someone else joined
-        if (!userIsCreator && matchCreator?.email) {
-          const updatedMatch = await refetch();
-          const newAvailableSlots = updatedMatch.data?.available_slots || 0;
-
-          await sendCreatorBookingNotification({
-            creatorEmail: matchCreator.email,
-            creatorName: matchCreator.name,
-            playerName: currentUser.name,
-            matchTitle: match.title || 'Padel Match',
-            matchDate: new Date(match.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
-            matchTime: formatTime(match.time),
-            location: match.location,
-            availableSlots: newAvailableSlots,
-            maxPlayers: match.max_players,
-          });
-        }
+        // TODO: Implement server-side email via Supabase Edge Function
+        // if (!userIsCreator && matchCreator?.email) {
+        //   const updatedMatch = await refetch();
+        //   const newAvailableSlots = updatedMatch.data?.available_slots || 0;
+        //   await sendCreatorBookingNotification({
+        //     creatorEmail: matchCreator.email,
+        //     creatorName: matchCreator.name,
+        //     playerName: currentUser.name,
+        //     matchTitle: match.title || 'Padel Match',
+        //     matchDate: new Date(match.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }),
+        //     matchTime: formatTime(match.time),
+        //     location: match.location,
+        //     availableSlots: newAvailableSlots,
+        //     maxPlayers: match.max_players,
+        //   });
+        // }
       }
 
       // Refresh match data
