@@ -87,7 +87,16 @@ export function useMatchNotifications() {
           showNotification(payload.new);
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.warn('Realtime subscription error:', err);
+          console.warn('Match notifications will not work. Enable Realtime in Supabase Dashboard: Database > Replication');
+        }
+        if (status === 'TIMED_OUT') {
+          console.warn('Realtime subscription timed out');
+        }
+        // 'SUBSCRIBED' means it worked
+      });
 
     return () => {
       supabase.removeChannel(channel);
