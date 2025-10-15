@@ -55,7 +55,7 @@ export default function Matches() {
     if (!currentUser) return [];
     return matches
       .filter(match =>
-        match.total_cost &&
+        match.total_cost > 0 &&
         (match.created_by === currentUser.id ||
          match.bookings.some((b: any) => b.user_id === currentUser.id))
       )
@@ -760,6 +760,13 @@ export default function Matches() {
                                 {match.is_private && (
                                   <div>🔒 Private Match</div>
                                 )}
+                                <div className="flex items-center gap-1">
+                                  {match.total_cost > 0 && (
+                                    <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-[10px] font-medium">
+                                      💵 Paid
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                               <div className="text-xs text-gray-500 italic">
                                 Click to view details
@@ -848,6 +855,11 @@ export default function Matches() {
                       {match.gender_requirement && match.gender_requirement !== 'all' && (
                         <span className={`inline-block px-2 py-0.5 text-white text-xs font-medium rounded-full ${match.gender_requirement === 'male_only' ? 'bg-blue-500' : 'bg-pink-500'}`}>
                           {match.gender_requirement === 'male_only' ? '♂' : '♀'}<span className="hidden sm:inline"> {match.gender_requirement === 'male_only' ? 'Lads' : 'Ladies'}</span>
+                        </span>
+                      )}
+                      {match.total_cost > 0 && (
+                        <span className="inline-block px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+                          💵<span className="hidden sm:inline"> Paid</span>
                         </span>
                       )}
                       {(() => {
@@ -1017,7 +1029,7 @@ export default function Matches() {
                   <div className="flex flex-wrap gap-3">
                     {match.bookings.slice(0, 8).map((booking) => {
                       const hasPaid = isBookingPaid(match.id, booking.id);
-                      const showPaymentStatus = match.total_cost && (match.created_by === currentUser?.id || match.bookings.some((b: any) => b.user_id === currentUser?.id));
+                      const showPaymentStatus = match.total_cost > 0 && (match.created_by === currentUser?.id || match.bookings.some((b: any) => b.user_id === currentUser?.id));
 
                       return (
                         <Link

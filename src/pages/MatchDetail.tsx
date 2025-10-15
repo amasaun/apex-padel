@@ -67,12 +67,12 @@ export default function MatchDetail() {
   const { data: allPayments = [] } = useQuery({
     queryKey: ['payments', match?.id],
     queryFn: () => getPaymentsByMatchId(match!.id),
-    enabled: !!match?.id && !!match?.total_cost,
+    enabled: !!match?.id && match.total_cost > 0,
   });
 
   // Calculate per-person cost if match has a total cost
   // Divide by max_players (available slots), not bookings length
-  const perPersonCost = match?.total_cost && match?.max_players
+  const perPersonCost = match?.total_cost && match.total_cost > 0 && match?.max_players
     ? match.total_cost / match.max_players
     : null;
 
@@ -511,6 +511,11 @@ export default function MatchDetail() {
                     <span>{match.gender_requirement === 'male_only' ? 'Lads' : 'Ladies'}</span>
                   </span>
                 )}
+                {match.total_cost > 0 && (
+                  <span className="inline-block px-3 py-1 bg-orange-100 text-orange-700 text-sm font-medium rounded-full">
+                    💵<span className="hidden sm:inline"> Paid</span>
+                  </span>
+                )}
               </div>
             </div>
             {/* Desktop buttons */}
@@ -932,7 +937,7 @@ export default function MatchDetail() {
           <div className="space-y-3">
             {match.bookings.map((booking) => {
               const hasPaid = isBookingPaid(booking.id);
-              const showPaymentStatus = match.total_cost && (isCreator || isBooked);
+              const showPaymentStatus = match.total_cost > 0 && (isCreator || isBooked);
 
               return (
                 <Link
@@ -1053,7 +1058,7 @@ export default function MatchDetail() {
         </div>
 
         {/* Payment Section */}
-        {match.total_cost && perPersonCost && isBooked && !isCreator && matchStatus !== 'completed' && (
+        {match.total_cost > 0 && perPersonCost && isBooked && !isCreator && matchStatus !== 'completed' && (
           <div className="mt-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">💵 Payment Required</h3>
             <div className="flex items-center justify-between mb-4">
@@ -1119,7 +1124,7 @@ export default function MatchDetail() {
         )}
 
         {/* Creator Payment View */}
-        {match.total_cost && isCreator && (
+        {match.total_cost > 0 && isCreator && (
           <div className="mt-6 p-6 bg-gray-50 border border-gray-200 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment Summary</h3>
             <div className="mb-4">
@@ -1134,7 +1139,7 @@ export default function MatchDetail() {
             {!currentUser?.venmo_username && !currentUser?.zelle_handle && (
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
-                  <Link to={`/edit-profile/${currentUser?.id}`} className="font-medium underline">
+                  <Link to={`/profile/${currentUser?.id}/edit`} className="font-medium underline">
                     Add your payment info
                   </Link> to receive payments from players.
                 </p>
