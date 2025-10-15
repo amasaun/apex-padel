@@ -59,6 +59,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
     isPrivate: match.is_private || false,
     requiredLevel: (match.required_level !== null && match.required_level !== undefined) ? match.required_level : null,
     genderRequirement: match.gender_requirement || 'all',
+    totalCost: match.total_cost ? String(match.total_cost) : '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>(
@@ -70,6 +71,12 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
 
   useEffect(() => {
     if (isOpen) {
+      console.log('EditMatchModal - match data:', {
+        total_cost: match.total_cost,
+        total_cost_type: typeof match.total_cost,
+        converted: match.total_cost ? String(match.total_cost) : '',
+      });
+
       setFormData({
         title: match.title || '',
         date: match.date,
@@ -80,6 +87,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
         isPrivate: match.is_private || false,
         requiredLevel: (match.required_level !== null && match.required_level !== undefined) ? match.required_level : null,
         genderRequirement: match.gender_requirement || 'all',
+        totalCost: match.total_cost ? String(match.total_cost) : '',
       });
       setSelectedPlayers(match.bookings.map((b) => b.user_id));
 
@@ -136,6 +144,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
         is_private: formData.isPrivate,
         required_level: formData.requiredLevel !== null ? formData.requiredLevel : undefined,
         gender_requirement: formData.genderRequirement,
+        total_cost: formData.totalCost ? parseFloat(formData.totalCost) : undefined,
       });
 
       // Update players
@@ -398,6 +407,29 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
             </select>
             <p className="mt-1 text-xs text-gray-500">
               Select which genders can join this match.
+            </p>
+          </div>
+
+          {/* Total Cost */}
+          <div>
+            <label htmlFor="totalCost" className="block text-sm font-medium text-gray-700 mb-2">
+              Total Court Cost (optional)
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+              <input
+                type="number"
+                id="totalCost"
+                step="0.01"
+                min="0"
+                value={formData.totalCost}
+                onChange={(e) => setFormData({ ...formData, totalCost: e.target.value })}
+                className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="0.00"
+              />
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Enter the total amount you paid for the court. This will be split equally among all players who book.
             </p>
           </div>
 

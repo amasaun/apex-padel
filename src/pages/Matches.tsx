@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { getMatches, getLocations } from '@/lib/api';
+import { getMatches, getLocations, getPaymentsByMatchId } from '@/lib/api';
 import { getCurrentUserProfile } from '@/lib/auth';
 import { getRankingColor, formatTime, formatDuration, calculateEndTime, getRankingLabel, formatRanking } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
@@ -49,6 +49,40 @@ export default function Matches() {
     queryKey: ['primaryInviteCode'],
     queryFn: getPrimaryInviteCode,
   });
+
+  // Get matches where user is involved (creator or booked) and has payment enabled
+  const relevantMatchIds = useMemo(() => {
+    if (!currentUser) return [];
+    return matches
+      .filter(match =>
+        match.total_cost &&
+        (match.created_by === currentUser.id ||
+         match.bookings.some((b: any) => b.user_id === currentUser.id))
+      )
+      .map(m => m.id);
+  }, [matches, currentUser]);
+
+  // Fetch payment data for relevant matches
+  const { data: paymentsData } = useQuery({
+    queryKey: ['matchesPayments', relevantMatchIds],
+    queryFn: async () => {
+      const paymentsMap: Record<string, any[]> = {};
+      await Promise.all(
+        relevantMatchIds.map(async (matchId) => {
+          const payments = await getPaymentsByMatchId(matchId);
+          paymentsMap[matchId] = payments;
+        })
+      );
+      return paymentsMap;
+    },
+    enabled: relevantMatchIds.length > 0,
+  });
+
+  // Helper to check if a booking has been paid
+  const isBookingPaid = (matchId: string, bookingId: string) => {
+    if (!paymentsData || !paymentsData[matchId]) return false;
+    return paymentsData[matchId].some((p: any) => p.booking_id === bookingId && p.marked_as_paid);
+  };
 
   const getMatchStatus = (dateStr: string, timeStr: string, duration: number) => {
     const now = new Date();
@@ -981,48 +1015,72 @@ export default function Matches() {
                     Players:
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    {match.bookings.slice(0, 8).map((booking) => (
-                      <Link
-                        key={booking.id}
-                        to={`/profile/${booking.user.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="relative group"
-                      >
-                        <UserAvatar
-                          name={booking.user.name}
-                          photoUrl={booking.user.photo_url}
-                          size="md"
-                          className={`border-2 ${
-                            isFull ? 'border-gray-300 opacity-60' : 'border-white'
-                          }`}
-                        />
-                        <div
-                          className={`absolute -bottom-1 -right-1 ${getRankingColor(
-                            booking.user.ranking || '0'
-                          )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
+                    {match.bookings.slice(0, 8).map((booking) => {
+                      const hasPaid = isBookingPaid(match.id, booking.id);
+                      const showPaymentStatus = match.total_cost && (match.created_by === currentUser?.id || match.bookings.some((b: any) => b.user_id === currentUser?.id));
+
+                      return (
+                        <Link
+                          key={booking.id}
+                          to={`/profile/${booking.user.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="relative group"
                         >
-                          {formatRanking(booking.user.ranking)}
-                        </div>
-                        {booking.user.id === match.created_by && (
-                          <div className="absolute -top-1 -left-1 bg-blue-500 text-white rounded-full p-0.5 border-2 border-white shadow-sm" title="Match Creator">
-                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-                            </svg>
+                          <UserAvatar
+                            name={booking.user.name}
+                            photoUrl={booking.user.photo_url}
+                            size="md"
+                            className={`border-2 ${
+                              isFull ? 'border-gray-300 opacity-60' : 'border-white'
+                            }`}
+                          />
+                          <div
+                            className={`absolute -bottom-1 -right-1 ${getRankingColor(
+                              booking.user.ranking || '0'
+                            )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
+                          >
+                            {formatRanking(booking.user.ranking)}
                           </div>
-                        )}
-                        {/* Instant tooltip */}
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
-                          <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
-                            {booking.user.name}
-                            {booking.user.id === match.created_by && ' (Creator)'}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
-                              <div className="border-4 border-transparent border-t-gray-900"></div>
+                          {booking.user.id === match.created_by && (
+                            <div className="absolute -top-1 -left-1 bg-blue-500 text-white rounded-full p-0.5 border-2 border-white shadow-sm" title="Match Creator">
+                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                                <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          )}
+                          {/* Payment status badge */}
+                          {showPaymentStatus && (
+                            <div className={`absolute -top-1 -right-1 ${hasPaid ? 'bg-green-500' : 'bg-yellow-500'} rounded-full p-0.5 border-2 border-white shadow-sm`} title={hasPaid ? 'Paid' : 'Pending'}>
+                              {hasPaid ? (
+                                <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                </svg>
+                              ) : (
+                                <svg className="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                </svg>
+                              )}
+                            </div>
+                          )}
+                          {/* Instant tooltip */}
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
+                            <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                              {booking.user.name}
+                              {booking.user.id === match.created_by && ' (Creator)'}
+                              {showPaymentStatus && (
+                                <span className={`ml-1 ${hasPaid ? 'text-green-300' : 'text-yellow-300'}`}>
+                                  {hasPaid ? '✓ Paid' : '⏱ Pending'}
+                                </span>
+                              )}
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                                <div className="border-4 border-transparent border-t-gray-900"></div>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </div>
               )}

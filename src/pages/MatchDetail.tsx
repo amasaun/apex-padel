@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch, getUserById } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch, getUserById, getPaymentByBookingId, createOrUpdatePayment, getPaymentsByMatchId } from '@/lib/api';
 import { getCurrentUserProfile } from '@/lib/auth';
 import { getRankingColor, formatTime, calculateEndTime, formatDuration, getRankingLabel, formatRanking } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
@@ -53,8 +53,64 @@ export default function MatchDetail() {
 
   const isBooked = currentUser && bookings.some((booking: any) => booking.user_id === currentUser?.id);
 
+  // Get current user's booking ID
+  const currentUserBooking = bookings.find((booking: any) => booking.user_id === currentUser?.id);
+
+  // Fetch payment info for current user's booking
+  const { data: currentUserPayment } = useQuery({
+    queryKey: ['payment', currentUserBooking?.id],
+    queryFn: () => getPaymentByBookingId(currentUserBooking!.id),
+    enabled: !!currentUserBooking?.id,
+  });
+
+  // Fetch all payment records for the match (for creator view)
+  const { data: allPayments = [] } = useQuery({
+    queryKey: ['payments', match?.id],
+    queryFn: () => getPaymentsByMatchId(match!.id),
+    enabled: !!match?.id && !!match?.total_cost,
+  });
+
+  // Calculate per-person cost if match has a total cost
+  // Divide by max_players (available slots), not bookings length
+  const perPersonCost = match?.total_cost && match?.max_players
+    ? match.total_cost / match.max_players
+    : null;
+
+  // Debug logging for payment visibility
+  console.log('Payment Debug:', {
+    hasTotalCost: !!match?.total_cost,
+    totalCost: match?.total_cost,
+    perPersonCost,
+    isCreator,
+    isBooked,
+    bookingsLength: bookings.length,
+    currentUserId: currentUser?.id,
+    creatorId: match?.created_by,
+    currentUserPayment,
+  });
+
+  // Helper to check if a booking has been paid
+  const isBookingPaid = (bookingId: string) => {
+    return allPayments.some(p => p.booking_id === bookingId && p.marked_as_paid);
+  };
+
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+
+  const queryClient = useQueryClient();
+
+  // Mutation for toggling payment status
+  const togglePaymentMutation = useMutation({
+    mutationFn: async (newPaidStatus: boolean) => {
+      if (!currentUserBooking || !perPersonCost) throw new Error('Missing booking or cost info');
+      return createOrUpdatePayment(currentUserBooking.id, perPersonCost, newPaidStatus);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['payment', currentUserBooking?.id] });
+      queryClient.invalidateQueries({ queryKey: ['payments', match?.id] });
+      queryClient.invalidateQueries({ queryKey: ['match', id] });
+    },
+  });
 
   const getShareUrl = () => window.location.href;
 
@@ -167,6 +223,48 @@ export default function MatchDetail() {
     });
 
     return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  };
+
+  const handlePayVenmo = () => {
+    if (!matchCreator?.venmo_username || !perPersonCost) return;
+
+    const matchInfo = `${match?.title || 'Padel Match'} on ${formatDate(match!.date)}`;
+    const amount = perPersonCost.toFixed(2);
+
+    // Check if on mobile device
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      // Use deep link on mobile (opens Venmo app)
+      const venmoUrl = `venmo://pay?txn=charge&recipients=${matchCreator.venmo_username}&amount=${amount}&note=${encodeURIComponent(matchInfo)}`;
+      window.location.href = venmoUrl;
+    } else {
+      // Use web URL on desktop
+      const venmoWebUrl = `https://venmo.com/${matchCreator.venmo_username}?txn=charge&amount=${amount}&note=${encodeURIComponent(matchInfo)}`;
+      window.open(venmoWebUrl, '_blank');
+    }
+  };
+
+  const handleCopyZelle = () => {
+    if (!matchCreator?.zelle_handle) return;
+
+    navigator.clipboard.writeText(matchCreator.zelle_handle).then(() => {
+      alert(`Zelle handle copied: ${matchCreator.zelle_handle}`);
+    });
+  };
+
+  const handleTogglePayment = async () => {
+    try {
+      const newStatus = !currentUserPayment?.marked_as_paid;
+      await togglePaymentMutation.mutateAsync(newStatus);
+      if (newStatus) {
+        alert('Payment marked as sent! The match creator will verify.');
+      } else {
+        alert('Payment status cleared. You can mark it again when you pay.');
+      }
+    } catch (error: any) {
+      alert(error.message || 'Failed to update payment status');
+    }
   };
 
   const downloadICS = () => {
@@ -832,54 +930,84 @@ export default function MatchDetail() {
             Players ({match.bookings.length}/{match.max_players})
           </h2>
           <div className="space-y-3">
-            {match.bookings.map((booking) => (
-              <Link
-                key={booking.id}
-                to={`/profile/${booking.user.id}`}
-                className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
-              >
-                <div className="relative group">
-                  <UserAvatar
-                    name={booking.user.name}
-                    photoUrl={booking.user.photo_url}
-                    size="lg"
-                  />
-                  <div
-                    className={`absolute -bottom-1 -right-1 ${getRankingColor(
-                      booking.user.ranking || '0'
-                    )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
-                  >
-                    {formatRanking(booking.user.ranking)}
-                  </div>
-                  {/* Instant tooltip */}
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
-                    <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
-                      {booking.user.name}
-                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
-                        <div className="border-4 border-transparent border-t-gray-900"></div>
+            {match.bookings.map((booking) => {
+              const hasPaid = isBookingPaid(booking.id);
+              const showPaymentStatus = match.total_cost && (isCreator || isBooked);
+
+              return (
+                <Link
+                  key={booking.id}
+                  to={`/profile/${booking.user.id}`}
+                  className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                >
+                  <div className="relative group">
+                    <UserAvatar
+                      name={booking.user.name}
+                      photoUrl={booking.user.photo_url}
+                      size="lg"
+                    />
+                    <div
+                      className={`absolute -bottom-1 -right-1 ${getRankingColor(
+                        booking.user.ranking || '0'
+                      )} text-white text-[10px] font-bold rounded-full px-1.5 py-0.5 min-w-[26px] h-5 flex items-center justify-center border-2 border-white shadow-sm`}
+                    >
+                      {formatRanking(booking.user.ranking)}
+                    </div>
+                    {/* Payment status badge */}
+                    {showPaymentStatus && (
+                      <div className={`absolute -top-1 -right-1 ${hasPaid ? 'bg-green-500' : 'bg-yellow-500'} rounded-full p-1 border-2 border-white shadow-sm`} title={hasPaid ? 'Paid' : 'Pending'}>
+                        {hasPaid ? (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    )}
+                    {/* Instant tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
+                      <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                        {booking.user.name}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                          <div className="border-4 border-transparent border-t-gray-900"></div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <div className="font-medium text-gray-900">{booking.user.name}</div>
-                    {booking.user.id === match.created_by && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full" title="Match Creator">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                          <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-                        </svg>
-                        Creator
-                      </span>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium text-gray-900">{booking.user.name}</div>
+                      {booking.user.id === match.created_by && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full" title="Match Creator">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                            <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                          </svg>
+                          Creator
+                        </span>
+                      )}
+                      {showPaymentStatus && (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 ${hasPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'} text-xs font-medium rounded-full`}>
+                          {hasPaid ? '✓ Paid' : '⏱ Pending'}
+                        </span>
+                      )}
+                    </div>
+                    <div className={`text-sm ${getRankingColor(booking.user.ranking || '0')} bg-opacity-10 inline-block px-2 py-0.5 rounded`}>
+                      Rank: {formatRanking(booking.user.ranking)}
+                    </div>
+                    {/* Creator sees amount owed per player */}
+                    {isCreator && perPersonCost && (
+                      <div className="text-sm text-gray-600 mt-1">
+                        Owes: ${perPersonCost.toFixed(2)}
+                      </div>
                     )}
                   </div>
-                  <div className={`text-sm ${getRankingColor(booking.user.ranking || '0')} bg-opacity-10 inline-block px-2 py-0.5 rounded`}>
-                    Rank: {formatRanking(booking.user.ranking)}
-                  </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
             {match.available_slots > 0 && (
               <div className="flex items-center gap-4 p-3 border-2 border-dashed border-gray-300 rounded-lg">
                 <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
@@ -923,6 +1051,97 @@ export default function MatchDetail() {
             </div>
           )}
         </div>
+
+        {/* Payment Section */}
+        {match.total_cost && perPersonCost && isBooked && !isCreator && matchStatus !== 'completed' && (
+          <div className="mt-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">💵 Payment Required</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm text-gray-600">Your share:</p>
+                <p className="text-2xl font-bold text-gray-900">${perPersonCost.toFixed(2)}</p>
+                <p className="text-xs text-gray-500 mt-1">Per slot (${match.total_cost.toFixed(2)} ÷ {match.max_players} slots)</p>
+              </div>
+              {currentUserPayment?.marked_as_paid && (
+                <div className="flex items-center gap-2 text-green-600">
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="font-medium">Marked as Paid</span>
+                </div>
+              )}
+            </div>
+
+            <p className="text-sm text-gray-700 mb-4">Pay {matchCreator?.name}:</p>
+            <div className="space-y-3">
+              {matchCreator?.venmo_username && (
+                <button
+                  onClick={handlePayVenmo}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+                >
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19.83 4.18c.84 1.3 1.17 2.58 1.17 4.16 0 5.2-4.42 11.96-8.03 16.66H7.5L4.16 4.66h5.7l1.76 10.9c1.46-2.4 3.24-5.87 3.24-8.49 0-1.4-.27-2.37-.71-3.06l5.68-1.83z"/>
+                  </svg>
+                  Pay with Venmo
+                </button>
+              )}
+              {matchCreator?.zelle_handle && (
+                <button
+                  onClick={handleCopyZelle}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Copy Zelle Info
+                </button>
+              )}
+              <div className="pt-3 border-t border-blue-200">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={currentUserPayment?.marked_as_paid || false}
+                    onChange={handleTogglePayment}
+                    disabled={togglePaymentMutation.isPending}
+                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">
+                    {currentUserPayment?.marked_as_paid ? 'I sent the payment' : 'Mark as sent when you pay'}
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {!matchCreator?.venmo_username && !matchCreator?.zelle_handle && (
+              <p className="text-sm text-gray-600 italic">The match creator hasn't set up payment information yet.</p>
+            )}
+          </div>
+        )}
+
+        {/* Creator Payment View */}
+        {match.total_cost && isCreator && (
+          <div className="mt-6 p-6 bg-gray-50 border border-gray-200 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment Summary</h3>
+            <div className="mb-4">
+              <p className="text-sm text-gray-600">Total Court Cost:</p>
+              <p className="text-2xl font-bold text-gray-900">${match.total_cost.toFixed(2)}</p>
+              {perPersonCost && (
+                <p className="text-sm text-gray-600 mt-1">
+                  ${perPersonCost.toFixed(2)} per slot × {match.max_players} slots ({bookings.length} booked so far)
+                </p>
+              )}
+            </div>
+            {!currentUser?.venmo_username && !currentUser?.zelle_handle && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <Link to={`/edit-profile/${currentUser?.id}`} className="font-medium underline">
+                    Add your payment info
+                  </Link> to receive payments from players.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {(isCreator || isAdmin) && matchStatus !== 'completed' && (

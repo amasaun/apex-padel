@@ -18,6 +18,8 @@ export default function EditProfile() {
     ranking: '',
     photo_url: '',
     share_contact_info: false,
+    venmo_username: '',
+    zelle_handle: '',
   });
 
   useEffect(() => {
@@ -47,6 +49,8 @@ export default function EditProfile() {
         ranking: profile.ranking || '3.0',
         photo_url: profile.photo_url || '',
         share_contact_info: profile.share_contact_info || false,
+        venmo_username: profile.venmo_username || '',
+        zelle_handle: profile.zelle_handle || '',
       });
     } catch (err: any) {
       setError(err.message);
@@ -76,6 +80,8 @@ export default function EditProfile() {
         ranking: formData.ranking,
         photo_url: formData.photo_url || undefined,
         share_contact_info: formData.share_contact_info,
+        venmo_username: formData.venmo_username || undefined,
+        zelle_handle: formData.zelle_handle || undefined,
       });
 
       navigate(`/profile/${user.id}`);
@@ -176,6 +182,51 @@ export default function EditProfile() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="+1234567890"
             />
+          </div>
+
+          {/* Payment Settings Section */}
+          <div className="pt-6 border-t border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Payment Information</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Add your payment handles to receive payments when you create paid matches
+            </p>
+
+            {/* Venmo Username */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Venmo Username (optional)
+              </label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">@</span>
+                <input
+                  type="text"
+                  value={formData.venmo_username}
+                  onChange={(e) => setFormData({ ...formData, venmo_username: e.target.value })}
+                  className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  placeholder="username"
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-500">
+                Your Venmo username (without the @)
+              </p>
+            </div>
+
+            {/* Zelle Handle */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Zelle Email or Phone (optional)
+              </label>
+              <input
+                type="text"
+                value={formData.zelle_handle}
+                onChange={(e) => setFormData({ ...formData, zelle_handle: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="email@example.com or +1234567890"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Email address or phone number registered with Zelle
+              </p>
+            </div>
           </div>
 
           {/* Share Contact Info Toggle */}
