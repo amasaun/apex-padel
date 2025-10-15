@@ -55,7 +55,7 @@ export default function Matches() {
     if (!currentUser) return [];
     return matches
       .filter(match =>
-        match.total_cost > 0 &&
+        (match.total_cost || 0) > 0 &&
         (match.created_by === currentUser.id ||
          match.bookings.some((b: any) => b.user_id === currentUser.id))
       )
@@ -761,7 +761,7 @@ export default function Matches() {
                                   <div>🔒 Private Match</div>
                                 )}
                                 <div className="flex items-center gap-1">
-                                  {match.total_cost > 0 && (
+                                  {(match.total_cost || 0) > 0 && (
                                     <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-[10px] font-medium">
                                       💵 Paid
                                     </span>
@@ -857,7 +857,7 @@ export default function Matches() {
                           {match.gender_requirement === 'male_only' ? '♂' : '♀'}<span className="hidden sm:inline"> {match.gender_requirement === 'male_only' ? 'Lads' : 'Ladies'}</span>
                         </span>
                       )}
-                      {match.total_cost > 0 && (
+                      {(match.total_cost || 0) > 0 && (
                         <span className="inline-block px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
                           💵<span className="hidden sm:inline"> Paid</span>
                         </span>
@@ -1027,9 +1027,14 @@ export default function Matches() {
                     Players:
                   </div>
                   <div className="flex flex-wrap gap-3">
-                    {match.bookings.slice(0, 8).map((booking) => {
+                    {[...match.bookings].sort((a, b) => {
+                      // Creator always first
+                      if (a.user.id === match.created_by) return -1;
+                      if (b.user.id === match.created_by) return 1;
+                      return 0;
+                    }).slice(0, 8).map((booking) => {
                       const hasPaid = isBookingPaid(match.id, booking.id);
-                      const showPaymentStatus = match.total_cost > 0 && (match.created_by === currentUser?.id || match.bookings.some((b: any) => b.user_id === currentUser?.id));
+                      const showPaymentStatus = (match.total_cost || 0) > 0 && (match.created_by === currentUser?.id || match.bookings.some((b: any) => b.user_id === currentUser?.id));
 
                       return (
                         <Link

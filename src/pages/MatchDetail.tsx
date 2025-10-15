@@ -67,13 +67,13 @@ export default function MatchDetail() {
   const { data: allPayments = [] } = useQuery({
     queryKey: ['payments', match?.id],
     queryFn: () => getPaymentsByMatchId(match!.id),
-    enabled: !!match?.id && match.total_cost > 0,
+    enabled: !!match?.id && (match.total_cost || 0) > 0,
   });
 
   // Calculate per-person cost if match has a total cost
   // Divide by max_players (available slots), not bookings length
-  const perPersonCost = match?.total_cost && match.total_cost > 0 && match?.max_players
-    ? match.total_cost / match.max_players
+  const perPersonCost = (match?.total_cost || 0) > 0 && match?.max_players
+    ? match.total_cost! / match.max_players
     : null;
 
   // Debug logging for payment visibility
@@ -511,7 +511,7 @@ export default function MatchDetail() {
                     <span>{match.gender_requirement === 'male_only' ? 'Lads' : 'Ladies'}</span>
                   </span>
                 )}
-                {match.total_cost > 0 && (
+                {(match.total_cost || 0) > 0 && (
                   <span className="inline-block px-3 py-1 bg-orange-100 text-orange-700 text-sm font-medium rounded-full">
                     💵<span className="hidden sm:inline"> Paid</span>
                   </span>
@@ -935,9 +935,14 @@ export default function MatchDetail() {
             Players ({match.bookings.length}/{match.max_players})
           </h2>
           <div className="space-y-3">
-            {match.bookings.map((booking) => {
+            {[...match.bookings].sort((a, b) => {
+              // Creator always first
+              if (a.user.id === match.created_by) return -1;
+              if (b.user.id === match.created_by) return 1;
+              return 0;
+            }).map((booking) => {
               const hasPaid = isBookingPaid(booking.id);
-              const showPaymentStatus = match.total_cost > 0 && (isCreator || isBooked);
+              const showPaymentStatus = (match.total_cost || 0) > 0 && (isCreator || isBooked);
 
               return (
                 <Link
@@ -958,6 +963,15 @@ export default function MatchDetail() {
                     >
                       {formatRanking(booking.user.ranking)}
                     </div>
+                    {/* Creator badge icon on avatar */}
+                    {booking.user.id === match.created_by && (
+                      <div className="absolute -top-1 -left-1 bg-blue-500 text-white rounded-full p-0.5 border-2 border-white shadow-sm" title="Match Creator">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
+                          <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
                     {/* Payment status badge */}
                     {showPaymentStatus && (
                       <div className={`absolute -top-1 -right-1 ${hasPaid ? 'bg-green-500' : 'bg-yellow-500'} rounded-full p-1 border-2 border-white shadow-sm`} title={hasPaid ? 'Paid' : 'Pending'}>
@@ -1058,14 +1072,14 @@ export default function MatchDetail() {
         </div>
 
         {/* Payment Section */}
-        {match.total_cost > 0 && perPersonCost && isBooked && !isCreator && matchStatus !== 'completed' && (
+        {(match.total_cost || 0) > 0 && perPersonCost && isBooked && !isCreator && matchStatus !== 'completed' && (
           <div className="mt-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">💵 Payment Required</h3>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-sm text-gray-600">Your share:</p>
                 <p className="text-2xl font-bold text-gray-900">${perPersonCost.toFixed(2)}</p>
-                <p className="text-xs text-gray-500 mt-1">Per slot (${match.total_cost.toFixed(2)} ÷ {match.max_players} slots)</p>
+                <p className="text-xs text-gray-500 mt-1">Per slot (${match.total_cost!.toFixed(2)} ÷ {match.max_players} slots)</p>
               </div>
               {currentUserPayment?.marked_as_paid && (
                 <div className="flex items-center gap-2 text-green-600">
@@ -1124,12 +1138,12 @@ export default function MatchDetail() {
         )}
 
         {/* Creator Payment View */}
-        {match.total_cost > 0 && isCreator && (
+        {(match.total_cost || 0) > 0 && isCreator && (
           <div className="mt-6 p-6 bg-gray-50 border border-gray-200 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment Summary</h3>
             <div className="mb-4">
               <p className="text-sm text-gray-600">Total Court Cost:</p>
-              <p className="text-2xl font-bold text-gray-900">${match.total_cost.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-gray-900">${match.total_cost!.toFixed(2)}</p>
               {perPersonCost && (
                 <p className="text-sm text-gray-600 mt-1">
                   ${perPersonCost.toFixed(2)} per slot × {match.max_players} slots ({bookings.length} booked so far)
