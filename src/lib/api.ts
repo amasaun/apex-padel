@@ -148,16 +148,34 @@ export async function createMatch(match: Omit<Match, 'id' | 'created_at'>) {
 
   // Automatically add the creator as a player
   const createdMatch = data as Match;
-  const { error: bookingError } = await supabase
+  const { data: bookingData, error: bookingError } = await supabase
     .from('bookings')
     .insert({
       match_id: createdMatch.id,
       user_id: match.created_by,
-    });
+    })
+    .select()
+    .single();
 
   if (bookingError) {
     console.error('Failed to auto-book creator:', bookingError);
     // Don't throw - match was created successfully
+  } else if (bookingData && createdMatch.total_cost && createdMatch.total_cost > 0) {
+    // If it's a paid match, automatically mark creator as paid
+    const perPersonCost = createdMatch.total_cost / createdMatch.max_players;
+    const { error: paymentError } = await supabase
+      .from('booking_payments')
+      .insert({
+        booking_id: bookingData.id,
+        amount_paid: perPersonCost,
+        marked_as_paid: true,
+        marked_at: new Date().toISOString(),
+      });
+
+    if (paymentError) {
+      console.error('Failed to mark creator as paid:', paymentError);
+      // Don't throw - match and booking were created successfully
+    }
   }
 
   return createdMatch;
@@ -172,7 +190,43 @@ export async function updateMatch(id: string, updates: Partial<Match>) {
     .single();
 
   if (error) throw error;
-  return data as Match;
+
+  const updatedMatch = data as Match;
+
+  // If match now has a cost, ensure creator is marked as paid
+  if (updatedMatch.total_cost && updatedMatch.total_cost > 0) {
+    // Find creator's booking
+    const { data: creatorBooking } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('match_id', updatedMatch.id)
+      .eq('user_id', updatedMatch.created_by)
+      .single();
+
+    if (creatorBooking) {
+      // Check if payment record exists
+      const { data: existingPayment } = await supabase
+        .from('booking_payments')
+        .select('id')
+        .eq('booking_id', creatorBooking.id)
+        .single();
+
+      // Create payment record if it doesn't exist
+      if (!existingPayment) {
+        const perPersonCost = updatedMatch.total_cost / updatedMatch.max_players;
+        await supabase
+          .from('booking_payments')
+          .insert({
+            booking_id: creatorBooking.id,
+            amount_paid: perPersonCost,
+            marked_as_paid: true,
+            marked_at: new Date().toISOString(),
+          });
+      }
+    }
+  }
+
+  return updatedMatch;
 }
 
 export async function deleteMatch(id: string) {

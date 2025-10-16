@@ -974,7 +974,22 @@ export default function MatchDetail() {
                     )}
                     {/* Payment status badge */}
                     {showPaymentStatus && (
-                      <div className={`absolute -top-1 -right-1 ${hasPaid ? 'bg-green-500' : 'bg-yellow-500'} rounded-full p-1 border-2 border-white shadow-sm`} title={hasPaid ? 'Paid' : 'Pending'}>
+                      <button
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (!isCreator) return;
+
+                          const newStatus = !hasPaid;
+                          if (perPersonCost) {
+                            await createOrUpdatePayment(booking.id, perPersonCost, newStatus);
+                            queryClient.invalidateQueries({ queryKey: ['payments', match?.id] });
+                          }
+                        }}
+                        disabled={!isCreator}
+                        className={`absolute -top-1 -right-1 ${hasPaid ? 'bg-green-500' : 'bg-yellow-500'} rounded-full p-1 border-2 border-white shadow-sm ${isCreator ? 'cursor-pointer hover:opacity-80' : ''}`}
+                        title={isCreator ? 'Click to toggle payment status' : hasPaid ? 'Paid' : 'Pending'}
+                      >
                         {hasPaid ? (
                           <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -984,7 +999,7 @@ export default function MatchDetail() {
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
                           </svg>
                         )}
-                      </div>
+                      </button>
                     )}
                     {/* Instant tooltip */}
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
@@ -1009,9 +1024,23 @@ export default function MatchDetail() {
                         </span>
                       )}
                       {showPaymentStatus && (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 ${hasPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'} text-xs font-medium rounded-full`}>
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (!isCreator) return; // Only creator can toggle others' payment status
+
+                            const newStatus = !hasPaid;
+                            if (perPersonCost) {
+                              await createOrUpdatePayment(booking.id, perPersonCost, newStatus);
+                              queryClient.invalidateQueries({ queryKey: ['payments', match?.id] });
+                            }
+                          }}
+                          disabled={!isCreator}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 ${hasPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'} text-xs font-medium rounded-full ${isCreator ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+                          title={isCreator ? 'Click to toggle payment status' : ''}
+                        >
                           {hasPaid ? '✓ Paid' : '⏱ Pending'}
-                        </span>
+                        </button>
                       )}
                     </div>
                     <div className={`text-sm ${getRankingColor(booking.user.ranking || '0')} bg-opacity-10 inline-block px-2 py-0.5 rounded`}>
@@ -1019,8 +1048,8 @@ export default function MatchDetail() {
                     </div>
                     {/* Creator sees amount owed per player */}
                     {isCreator && perPersonCost && (
-                      <div className="text-sm text-gray-600 mt-1">
-                        Owes: ${perPersonCost.toFixed(2)}
+                      <div className={`text-sm mt-1 ${hasPaid ? 'text-green-600 font-medium' : 'text-gray-600'}`}>
+                        {hasPaid ? 'Paid:' : 'Owes:'} ${perPersonCost.toFixed(2)}
                       </div>
                     )}
                   </div>
