@@ -131,8 +131,14 @@ export default function Matches() {
     }
 
     // Filter out full matches by default (unless user is creator or has booked)
+    // Note: This filter only applies to non-completed matches
     if (!showFullMatches) {
       result = result.filter(match => {
+        const status = getMatchStatus(match.date, match.time, match.duration);
+
+        // Don't filter completed matches - they're handled by showPastMatches toggle only
+        if (status === 'completed') return true;
+
         const isFull = match.available_slots === 0;
 
         // Always show if not full
