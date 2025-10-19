@@ -88,8 +88,6 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
   const [newGuestName, setNewGuestName] = useState('');
   const [newGuestGender, setNewGuestGender] = useState<'female' | 'male' | 'rather_not_say'>('female');
   const [addingGuest, setAddingGuest] = useState(false);
-  const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
-  const [editGuestGender, setEditGuestGender] = useState<'female' | 'male' | 'rather_not_say' | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -245,8 +243,6 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
       setGuestBookings(guestBookings.map(g =>
         g.id === guestId ? { ...g, gender } : g
       ));
-      setEditingGuestId(null);
-      setEditGuestGender(null);
       onSuccess(); // Refresh match data
     } catch (error: any) {
       alert('Failed to update guest: ' + error.message);
