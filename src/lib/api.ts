@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { Match, User, Booking, MatchWithDetails, InviteCode, BookingPayment } from '@/types';
+import { Match, User, Booking, MatchWithDetails, InviteCode, BookingPayment, GuestBooking, GuestBookingPayment } from '@/types';
 
 // ============================================
 // USERS
@@ -61,7 +61,8 @@ export async function getMatches(filters?: { date?: string; location?: string })
       bookings (
         *,
         user:users (*)
-      )
+      ),
+      guest_bookings (*)
     `)
     .order('date', { ascending: true })
     .order('time', { ascending: true });
@@ -78,11 +79,15 @@ export async function getMatches(filters?: { date?: string; location?: string })
 
   if (error) throw error;
 
-  // Transform data to include available_slots
-  const matchesWithDetails: MatchWithDetails[] = (data as any[]).map((match) => ({
-    ...match,
-    available_slots: match.max_players - (match.bookings?.length || 0),
-  }));
+  // Transform data to include available_slots (accounting for both regular and guest bookings)
+  const matchesWithDetails: MatchWithDetails[] = (data as any[]).map((match) => {
+    const regularBookings = match.bookings?.length || 0;
+    const guestBookings = match.guest_bookings?.length || 0;
+    return {
+      ...match,
+      available_slots: match.max_players - regularBookings - guestBookings,
+    };
+  });
 
   return matchesWithDetails;
 }
@@ -102,10 +107,15 @@ export async function getMatchById(id: string) {
       ? JSON.parse(match.bookings)
       : match.bookings || [];
 
+    const guestBookings = typeof match.guest_bookings === 'string'
+      ? JSON.parse(match.guest_bookings)
+      : match.guest_bookings || [];
+
     const matchWithDetails: MatchWithDetails = {
       ...match,
       bookings,
-      available_slots: match.max_players - (bookings?.length || 0),
+      guest_bookings: guestBookings,
+      available_slots: match.max_players - (bookings?.length || 0) - (guestBookings?.length || 0),
     };
 
     return matchWithDetails;
@@ -119,7 +129,8 @@ export async function getMatchById(id: string) {
       bookings (
         *,
         user:users (*)
-      )
+      ),
+      guest_bookings (*)
     `)
     .eq('id', id)
     .single();
@@ -129,9 +140,11 @@ export async function getMatchById(id: string) {
 
   // Transform to include available_slots
   const match = data as any;
+  const regularBookings = match.bookings?.length || 0;
+  const guestBookings = match.guest_bookings?.length || 0;
   const matchWithDetails: MatchWithDetails = {
     ...match,
-    available_slots: match.max_players - (match.bookings?.length || 0),
+    available_slots: match.max_players - regularBookings - guestBookings,
   };
 
   return matchWithDetails;
@@ -529,4 +542,117 @@ export async function createOrUpdatePayment(bookingId: string, amountPaid: numbe
 
 export async function markPaymentAsPaid(bookingId: string, amountPaid: number) {
   return createOrUpdatePayment(bookingId, amountPaid, true);
+}
+
+// ============================================
+// GUEST BOOKINGS
+// ============================================
+
+export async function createGuestBooking(matchId: string, guestName?: string) {
+  // Get next guest number for this match
+  const { data: nextNumberData, error: numberError } = await supabase.rpc('get_next_guest_number', {
+    p_match_id: matchId,
+  });
+
+  if (numberError) throw numberError;
+
+  const guestNumber = nextNumberData as number;
+  const finalGuestName = guestName?.trim() || `Guest ${guestNumber}`;
+
+  const { data: user } = await supabase.auth.getUser();
+  if (!user.user) throw new Error('Not authenticated');
+
+  const { data, error } = await supabase
+    .from('guest_bookings')
+    .insert({
+      match_id: matchId,
+      guest_name: finalGuestName,
+      guest_number: guestNumber,
+      added_by: user.user.id,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as GuestBooking;
+}
+
+export async function deleteGuestBooking(guestBookingId: string) {
+  const { error } = await supabase
+    .from('guest_bookings')
+    .delete()
+    .eq('id', guestBookingId);
+
+  if (error) throw error;
+}
+
+export async function getGuestPaymentsByMatchId(matchId: string) {
+  // Get all guest bookings for the match
+  const { data: guestBookings, error: guestBookingsError } = await supabase
+    .from('guest_bookings')
+    .select('id')
+    .eq('match_id', matchId);
+
+  if (guestBookingsError) throw guestBookingsError;
+  if (!guestBookings || guestBookings.length === 0) return [];
+
+  const guestBookingIds = guestBookings.map(gb => gb.id);
+
+  // Get payment records for these guest bookings
+  const { data, error } = await supabase
+    .from('guest_booking_payments')
+    .select('*')
+    .in('guest_booking_id', guestBookingIds);
+
+  if (error) throw error;
+  return data as GuestBookingPayment[];
+}
+
+export async function getGuestPaymentByGuestBookingId(guestBookingId: string) {
+  const { data, error } = await supabase
+    .from('guest_booking_payments')
+    .select('*')
+    .eq('guest_booking_id', guestBookingId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as GuestBookingPayment | null;
+}
+
+export async function createOrUpdateGuestPayment(guestBookingId: string, amountPaid: number, markedAsPaid: boolean) {
+  // Check if payment record exists
+  const existing = await getGuestPaymentByGuestBookingId(guestBookingId);
+
+  if (existing) {
+    // Update existing
+    const { data, error } = await supabase
+      .from('guest_booking_payments')
+      .update({
+        amount_paid: amountPaid,
+        marked_as_paid: markedAsPaid,
+        marked_at: markedAsPaid ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('guest_booking_id', guestBookingId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as GuestBookingPayment;
+  } else {
+    // Create new
+    const { data, error } = await supabase
+      .from('guest_booking_payments')
+      .insert({
+        guest_booking_id: guestBookingId,
+        amount_paid: amountPaid,
+        marked_as_paid: markedAsPaid,
+        marked_at: markedAsPaid ? new Date().toISOString() : null,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data as GuestBookingPayment;
+  }
 }

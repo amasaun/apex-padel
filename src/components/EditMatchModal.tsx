@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { MatchWithDetails, User } from '@/types';
+import { MatchWithDetails, User, GuestBooking } from '@/types';
 import { LOCATION_DATA } from '@/lib/locations';
 import { getRankingColor, formatRanking } from '@/lib/utils';
-import { updateMatch, getUsers, updateMatchPlayers } from '@/lib/api';
+import { updateMatch, getUsers, updateMatchPlayers, createGuestBooking, deleteGuestBooking } from '@/lib/api';
 import UserAvatar from './UserAvatar';
 
 const LOCATIONS = Object.keys(LOCATION_DATA);
@@ -68,6 +68,9 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
+  const [guestBookings, setGuestBookings] = useState<GuestBooking[]>([]);
+  const [newGuestName, setNewGuestName] = useState('');
+  const [addingGuest, setAddingGuest] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -90,6 +93,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
         totalCost: match.total_cost ? String(match.total_cost) : '',
       });
       setSelectedPlayers(match.bookings.map((b) => b.user_id));
+      setGuestBookings(match.guest_bookings || []);
 
       // Load all users
       getUsers().then(setAllUsers).catch(console.error);
@@ -116,8 +120,9 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
       newErrors.time = 'Time is required';
     }
 
-    if (selectedPlayers.length > formData.maxPlayers) {
-      newErrors.players = `Cannot have more than ${formData.maxPlayers} players`;
+    const totalPlayers = selectedPlayers.length + guestBookings.length;
+    if (totalPlayers > formData.maxPlayers) {
+      newErrors.players = `Cannot have more than ${formData.maxPlayers} players (currently have ${selectedPlayers.length} registered + ${guestBookings.length} guests)`;
     }
 
     setErrors(newErrors);
@@ -160,12 +165,43 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
     }
   };
 
+  const handleAddGuest = async () => {
+    const totalPlayers = selectedPlayers.length + guestBookings.length;
+    if (totalPlayers >= formData.maxPlayers) {
+      alert('Match is full. Remove a player or increase max players to add guests.');
+      return;
+    }
+
+    setAddingGuest(true);
+    try {
+      const newGuest = await createGuestBooking(match.id, newGuestName || undefined);
+      setGuestBookings([...guestBookings, newGuest]);
+      setNewGuestName('');
+      onSuccess(); // Refresh match data
+    } catch (error: any) {
+      alert('Failed to add guest: ' + error.message);
+    } finally {
+      setAddingGuest(false);
+    }
+  };
+
+  const handleRemoveGuest = async (guestId: string) => {
+    try {
+      await deleteGuestBooking(guestId);
+      setGuestBookings(guestBookings.filter(g => g.id !== guestId));
+      onSuccess(); // Refresh match data
+    } catch (error: any) {
+      alert('Failed to remove guest: ' + error.message);
+    }
+  };
+
   const togglePlayer = (userId: string) => {
     if (selectedPlayers.includes(userId)) {
       setSelectedPlayers(selectedPlayers.filter((id) => id !== userId));
     } else {
       // Check if adding a new player
-      if (selectedPlayers.length < formData.maxPlayers) {
+      const totalPlayers = selectedPlayers.length + guestBookings.length;
+      if (totalPlayers < formData.maxPlayers) {
         const player = allUsers.find(u => u.id === userId);
         if (player) {
           // Check if player meets the level requirement
@@ -463,7 +499,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
           {/* Player Management */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              Manage Players ({selectedPlayers.length}/{formData.maxPlayers})
+              Manage Players ({selectedPlayers.length + guestBookings.length}/{formData.maxPlayers})
             </label>
             {errors.players && <p className="mb-2 text-sm text-red-600">{errors.players}</p>}
 
@@ -509,7 +545,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
             )}
 
             {/* Add Players Search */}
-            {selectedPlayers.length < formData.maxPlayers && (
+            {(selectedPlayers.length + guestBookings.length) < formData.maxPlayers && (
               <div>
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Add Players</h3>
                 <input
@@ -561,6 +597,72 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
                     )}
                   </div>
                 )}
+              </div>
+            )}
+          </div>
+
+          {/* Guest Players Management */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Guest Players
+            </label>
+            <p className="text-xs text-gray-500 mb-3">
+              Add guests who don't have an account. They'll count toward the total player limit.
+            </p>
+
+            {/* Current Guests */}
+            {guestBookings.length > 0 && (
+              <div className="mb-4 space-y-2">
+                {guestBookings.map((guest) => (
+                  <div
+                    key={guest.id}
+                    className="flex items-center gap-3 p-3 bg-purple-50 border-2 border-purple-200 rounded-lg"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center text-purple-700">
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900">{guest.guest_name}</div>
+                      <div className="text-sm text-gray-500">Guest Player</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveGuest(guest.id)}
+                      className="text-red-600 hover:text-red-700 text-sm font-medium"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add Guest */}
+            {(selectedPlayers.length + guestBookings.length) < formData.maxPlayers && (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Guest name (optional)"
+                  value={newGuestName}
+                  onChange={(e) => setNewGuestName(e.target.value)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddGuest();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddGuest}
+                  disabled={addingGuest}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                >
+                  {addingGuest ? 'Adding...' : '+ Add Guest'}
+                </button>
               </div>
             )}
           </div>

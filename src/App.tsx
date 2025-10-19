@@ -36,11 +36,7 @@ function App() {
               />
               <Route
                 path="/matches/:id"
-                element={
-                  <ProtectedRoute>
-                    <MatchDetail />
-                  </ProtectedRoute>
-                }
+                element={<MatchDetail />}
               />
               <Route
                 path="/profile/:id"
