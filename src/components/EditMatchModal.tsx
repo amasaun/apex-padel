@@ -832,13 +832,13 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
 
             {/* Add Guest */}
             {(selectedPlayers.length + guestBookings.length) < formData.maxPlayers && (
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="space-y-2">
                 <input
                   type="text"
                   placeholder="Guest name (optional)"
                   value={newGuestName}
                   onChange={(e) => setNewGuestName(e.target.value)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -850,7 +850,7 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
                   type="button"
                   onClick={handleAddGuest}
                   disabled={addingGuest}
-                  className="w-full sm:w-auto px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  className="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {addingGuest ? 'Adding...' : '+ Add Guest'}
                 </button>
