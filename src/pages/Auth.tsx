@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { signUpWithEmail, signInWithEmail } from '@/lib/auth';
 import { getRankingLevel, getRankingColor, validateRanking } from '@/lib/ranking';
 import { validateInviteCode } from '@/lib/api';
@@ -240,9 +240,19 @@ export default function Auth() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Password *
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Password *
+                </label>
+                {mode === 'signin' && (
+                  <Link
+                    to="/forgot-password"
+                    className="text-xs text-primary hover:text-primary-dark font-medium"
+                  >
+                    Forgot password?
+                  </Link>
+                )}
+              </div>
               <input
                 type="password"
                 required
