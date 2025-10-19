@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch, getUserById, getPaymentByBookingId, createOrUpdatePayment, getPaymentsByMatchId, getGuestPaymentsByMatchId, createOrUpdateGuestPayment } from '@/lib/api';
+import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch, getUserById, getPaymentByBookingId, createOrUpdatePayment, getPaymentsByMatchId, getGuestPaymentsByMatchId, createOrUpdateGuestPayment, checkTournamentGenderQuota } from '@/lib/api';
 import { getCurrentUserProfile } from '@/lib/auth';
 import { getRankingColor, formatTime, calculateEndTime, formatDuration, getRankingLabel, formatRanking } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
@@ -426,6 +426,15 @@ export default function MatchDetail() {
           }
           if (match.gender_requirement === 'female_only' && userGender !== 'female') {
             alert('This match is for female players only.');
+            return;
+          }
+        }
+
+        // Check tournament gender quota (unless they're the creator)
+        if (!userIsCreator && match.is_tournament) {
+          const quotaCheck = await checkTournamentGenderQuota(match, currentUser.gender);
+          if (!quotaCheck.canBook) {
+            alert(quotaCheck.reason || 'Cannot book this tournament slot.');
             return;
           }
         }
@@ -942,6 +951,46 @@ export default function MatchDetail() {
           </div>
         )}
 
+        {/* Tournament Badge */}
+        {match.is_tournament && (
+          <div className="mb-4">
+            <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-800 px-4 py-2 rounded-lg font-semibold border-2 border-orange-300">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a2.25 2.25 0 100 4.5h12a2.25 2.25 0 100-4.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.706 6.706 0 00-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744zm0 2.629c0 1.196.312 2.32.857 3.294A5.266 5.266 0 013.16 5.337a45.6 45.6 0 012.006-.343v.256zm13.5 0v-.256c.674.1 1.343.214 2.006.343a5.265 5.265 0 01-2.863 3.207 6.72 6.72 0 00.857-3.294z"/>
+              </svg>
+              Tournament
+            </div>
+            {match.prize_first && (
+              <div className="mt-3 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a2.25 2.25 0 100 4.5h12a2.25 2.25 0 100-4.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.706 6.706 0 00-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744zm0 2.629c0 1.196.312 2.32.857 3.294A5.266 5.266 0 013.16 5.337a45.6 45.6 0 012.006-.343v.256zm13.5 0v-.256c.674.1 1.343.214 2.006.343a5.265 5.265 0 01-2.863 3.207 6.72 6.72 0 00.857-3.294z"/>
+                  </svg>
+                  <span className="font-bold text-yellow-900">Prize Money</span>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-yellow-800">🥇 1st Place:</span>
+                    <span className="text-lg font-bold text-yellow-900">${match.prize_first.toFixed(2)}</span>
+                  </div>
+                  {match.prize_second && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-yellow-800">🥈 2nd Place:</span>
+                      <span className="text-lg font-semibold text-yellow-800">${match.prize_second.toFixed(2)}</span>
+                    </div>
+                  )}
+                  {match.prize_third && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-yellow-800">🥉 3rd Place:</span>
+                      <span className="text-lg font-semibold text-yellow-700">${match.prize_third.toFixed(2)}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="text-sm text-gray-600 mb-1">
@@ -964,6 +1013,51 @@ export default function MatchDetail() {
             </div>
           )}
         </div>
+
+        {/* Tournament Gender Distribution */}
+        {match.is_tournament && (match.required_ladies || match.required_lads) && (
+          <div className="mb-8 p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
+            <div className="text-sm font-semibold text-gray-900 mb-3">Gender Distribution</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {match.required_ladies && (
+                <div>
+                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Ladies</span>
+                    <span className="font-semibold">
+                      {match.bookings.filter(b => b.user?.gender === 'female').length} / {match.required_ladies}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div
+                      className="bg-pink-500 h-3 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, (match.bookings.filter(b => b.user?.gender === 'female').length / match.required_ladies) * 100)}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              {match.required_lads && (
+                <div>
+                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                    <span>Lads</span>
+                    <span className="font-semibold">
+                      {match.bookings.filter(b => b.user?.gender === 'male').length} / {match.required_lads}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div
+                      className="bg-blue-500 h-3 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, (match.bookings.filter(b => b.user?.gender === 'male').length / match.required_lads) * 100)}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
@@ -1209,7 +1303,13 @@ export default function MatchDetail() {
                   : 'bg-primary hover:bg-primary-dark text-white'
               }`}
             >
-              {isBooked ? 'Give Up My Spot' : 'Book a Slot'}
+              {isBooked ? 'Give Up My Spot' : (
+                <>
+                  Book a Slot{(match.total_cost || 0) > 0 && match.price_per_player && (
+                    <> for 💵${match.price_per_player.toFixed(2)}</>
+                  )}
+                </>
+              )}
             </button>
           )}
           {matchStatus === 'in-progress' && (
@@ -1237,9 +1337,8 @@ export default function MatchDetail() {
             <h3 className="text-lg font-semibold text-gray-900 mb-3">💵 Payment Required</h3>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <p className="text-sm text-gray-600">Your share:</p>
+                <p className="text-sm text-gray-600">Price per player:</p>
                 <p className="text-2xl font-bold text-gray-900">${perPersonCost.toFixed(2)}</p>
-                <p className="text-xs text-gray-500 mt-1">Per slot (${match.total_cost!.toFixed(2)} ÷ {match.max_players} slots)</p>
               </div>
               {currentUserPayment?.marked_as_paid && (
                 <div className="flex items-center gap-2 text-green-600">
@@ -1298,19 +1397,30 @@ export default function MatchDetail() {
         )}
 
         {/* Creator Payment View */}
-        {(match.total_cost || 0) > 0 && isCreator && (
+        {(match.total_cost || 0) > 0 && (isCreator || isAdmin) && (
           <div className="mt-6 p-6 bg-gray-50 border border-gray-200 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment Summary</h3>
             <div className="mb-4">
-              <p className="text-sm text-gray-600">Total Court Cost:</p>
-              <p className="text-2xl font-bold text-gray-900">${match.total_cost!.toFixed(2)}</p>
-              {perPersonCost && (
-                <p className="text-sm text-gray-600 mt-1">
-                  ${perPersonCost.toFixed(2)} per slot × {match.max_players} slots ({bookings.length} booked so far)
-                </p>
-              )}
+              <p className="text-sm text-gray-600">Price Per Player:</p>
+              <p className="text-2xl font-bold text-gray-900">💵${match.price_per_player?.toFixed(2) || '0.00'}</p>
+              <p className="text-sm text-gray-600 mt-1">
+                {bookings.length + guestBookings.length} of {match.max_players} slots booked
+              </p>
             </div>
-            {!currentUser?.venmo_username && !currentUser?.zelle_handle && (
+            <div className="mb-4 pt-4 border-t border-gray-300">
+              <p className="text-sm text-gray-600">Total Amount Marked as Paid:</p>
+              <p className="text-2xl font-bold text-green-600">
+                ${(() => {
+                  const paidCount = allPayments.filter(p => p.marked_as_paid).length +
+                                    allGuestPayments.filter(p => p.marked_as_paid).length;
+                  return ((match.price_per_player || 0) * paidCount).toFixed(2);
+                })()}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                {allPayments.filter(p => p.marked_as_paid).length + allGuestPayments.filter(p => p.marked_as_paid).length} of {bookings.length + guestBookings.length} players marked as paid
+              </p>
+            </div>
+            {isCreator && !currentUser?.venmo_username && !currentUser?.zelle_handle && (
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">
                   <Link to={`/profile/${currentUser?.id}/edit`} className="font-medium underline">
