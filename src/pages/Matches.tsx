@@ -1030,7 +1030,7 @@ export default function Matches() {
                 </div>
               </div>
 
-              {match.bookings.length > 0 && (
+              {(match.bookings.length > 0 || (match.guest_bookings || []).length > 0) && (
                 <div>
                   <div className={`text-sm mb-2 ${isFull ? 'text-gray-500' : 'text-gray-600'}`}>
                     Players:
@@ -1107,6 +1107,31 @@ export default function Matches() {
                         </Link>
                       );
                     })}
+
+                    {/* Guest Players */}
+                    {(match.guest_bookings || []).map((guestBooking: any) => (
+                      <div
+                        key={guestBooking.id}
+                        className="relative group"
+                      >
+                        <div className={`w-12 h-12 rounded-full bg-purple-200 flex items-center justify-center text-purple-700 border-2 ${
+                          isFull ? 'border-gray-300 opacity-60' : 'border-white'
+                        }`}>
+                          <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                          </svg>
+                        </div>
+                        {/* Instant tooltip */}
+                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
+                          <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                            {guestBooking.guest_name} (Guest)
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                              <div className="border-4 border-transparent border-t-gray-900"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}

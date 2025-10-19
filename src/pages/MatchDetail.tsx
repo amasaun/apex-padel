@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch, getUserById, getPaymentByBookingId, createOrUpdatePayment, getPaymentsByMatchId } from '@/lib/api';
+import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch, getUserById, getPaymentByBookingId, createOrUpdatePayment, getPaymentsByMatchId, getGuestPaymentsByMatchId, createOrUpdateGuestPayment } from '@/lib/api';
 import { getCurrentUserProfile } from '@/lib/auth';
 import { getRankingColor, formatTime, calculateEndTime, formatDuration, getRankingLabel, formatRanking } from '@/lib/utils';
 import { LOCATION_DATA } from '@/lib/locations';
@@ -43,6 +43,7 @@ export default function MatchDetail() {
     queryFn: getPrimaryInviteCode,
   });
 
+  const isAuthenticated = !!currentUser;
   const isCreator = match?.created_by === currentUser?.id;
   const isAdmin = currentUser?.is_admin || false;
 
@@ -70,6 +71,13 @@ export default function MatchDetail() {
     enabled: !!match?.id && (match.total_cost || 0) > 0,
   });
 
+  // Fetch all guest payment records for the match
+  const { data: allGuestPayments = [] } = useQuery({
+    queryKey: ['guestPayments', match?.id],
+    queryFn: () => getGuestPaymentsByMatchId(match!.id),
+    enabled: !!match?.id && (match.total_cost || 0) > 0,
+  });
+
   // Calculate per-person cost if match has a total cost
   // Divide by max_players (available slots), not bookings length
   const perPersonCost = (match?.total_cost || 0) > 0 && match?.max_players
@@ -93,6 +101,13 @@ export default function MatchDetail() {
   const isBookingPaid = (bookingId: string) => {
     return allPayments.some(p => p.booking_id === bookingId && p.marked_as_paid);
   };
+
+  // Helper to check if a guest booking has been paid
+  const isGuestBookingPaid = (guestBookingId: string) => {
+    return allGuestPayments.some(p => p.guest_booking_id === guestBookingId && p.marked_as_paid);
+  };
+
+  const guestBookings = match?.guest_bookings || [];
 
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -459,9 +474,25 @@ export default function MatchDetail() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
-      <Link to="/matches" className="text-primary hover:underline mb-6 inline-block">
-        ← Back to matches
-      </Link>
+      {isAuthenticated && (
+        <Link to="/matches" className="text-primary hover:underline mb-6 inline-block">
+          ← Back to matches
+        </Link>
+      )}
+
+      {/* Unauthenticated User Banner */}
+      {!isAuthenticated && (
+        <div className="mb-6 p-6 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg shadow-lg">
+          <h2 className="text-2xl font-bold mb-2">Join Apex Padel!</h2>
+          <p className="mb-4">Sign up to book matches and join our community.</p>
+          <Link
+            to={inviteCode ? `/auth?invite=${inviteCode.code}` : '/auth'}
+            className="inline-block bg-white text-primary px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
+          >
+            Sign Up / Sign In
+          </Link>
+        </div>
+      )}
 
       {showBookingConfirmation && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
@@ -519,9 +550,10 @@ export default function MatchDetail() {
               </div>
             </div>
             {/* Desktop buttons */}
-            <div className="hidden md:flex gap-2">
-              {matchStatus !== 'completed' && (
-                <div className="relative group">
+            {isAuthenticated && (
+              <div className="hidden md:flex gap-2">
+                {matchStatus !== 'completed' && (
+                  <div className="relative group">
                   <button
                     onClick={() => setShowShareMenu(!showShareMenu)}
                     className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-medium transition flex items-center gap-2"
@@ -674,10 +706,12 @@ export default function MatchDetail() {
                   </div>
                 </div>
               )}
-            </div>
+              </div>
+            )}
 
             {/* Mobile hamburger menu */}
-            <div className="md:hidden relative">
+            {isAuthenticated && (
+              <div className="md:hidden relative">
               <button
                 onClick={() => setShowMobileMenu(!showMobileMenu)}
                 className="p-2 hover:bg-gray-100 rounded-lg transition"
@@ -829,7 +863,8 @@ export default function MatchDetail() {
                   </div>
                 </>
               )}
-            </div>
+              </div>
+            )}
           </div>
           <div className="text-gray-600 mb-1">
             {formatDate(match.date)}
@@ -932,7 +967,7 @@ export default function MatchDetail() {
 
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Players ({match.bookings.length}/{match.max_players})
+            Players ({match.bookings.length + guestBookings.length}/{match.max_players})
           </h2>
           <div className="space-y-3">
             {[...match.bookings].sort((a, b) => {
@@ -1056,6 +1091,100 @@ export default function MatchDetail() {
                 </Link>
               );
             })}
+
+            {/* Guest Players */}
+            {guestBookings.map((guestBooking) => {
+              const hasGuestPaid = isGuestBookingPaid(guestBooking.id);
+              const showPaymentStatus = (match.total_cost || 0) > 0 && (isCreator || isBooked);
+
+              return (
+                <div
+                  key={guestBooking.id}
+                  className="flex items-center gap-4 p-3 bg-purple-50 rounded-lg border border-purple-200"
+                >
+                  <div className="relative group">
+                    <div className="w-12 h-12 rounded-full bg-purple-200 flex items-center justify-center text-purple-700">
+                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    {/* Payment status badge for guests */}
+                    {showPaymentStatus && (
+                      <button
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (!isCreator) return;
+
+                          const newStatus = !hasGuestPaid;
+                          if (perPersonCost) {
+                            await createOrUpdateGuestPayment(guestBooking.id, perPersonCost, newStatus);
+                            queryClient.invalidateQueries({ queryKey: ['guestPayments', match?.id] });
+                          }
+                        }}
+                        disabled={!isCreator}
+                        className={`absolute -top-1 -right-1 ${hasGuestPaid ? 'bg-green-500' : 'bg-yellow-500'} rounded-full p-1 border-2 border-white shadow-sm ${isCreator ? 'cursor-pointer hover:opacity-80' : ''}`}
+                        title={isCreator ? 'Click to toggle payment status' : hasGuestPaid ? 'Paid' : 'Pending'}
+                      >
+                        {hasGuestPaid ? (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </button>
+                    )}
+                    {/* Instant tooltip */}
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
+                      <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                        {guestBooking.guest_name}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-px">
+                          <div className="border-4 border-transparent border-t-gray-900"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <div className="font-medium text-gray-900">{guestBooking.guest_name}</div>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full">
+                        Guest
+                      </span>
+                      {showPaymentStatus && (
+                        <button
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (!isCreator) return;
+
+                            const newStatus = !hasGuestPaid;
+                            if (perPersonCost) {
+                              await createOrUpdateGuestPayment(guestBooking.id, perPersonCost, newStatus);
+                              queryClient.invalidateQueries({ queryKey: ['guestPayments', match?.id] });
+                            }
+                          }}
+                          disabled={!isCreator}
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 ${hasGuestPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'} text-xs font-medium rounded-full ${isCreator ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+                          title={isCreator ? 'Click to toggle payment status' : ''}
+                        >
+                          {hasGuestPaid ? '✓ Paid' : '⏱ Pending'}
+                        </button>
+                      )}
+                    </div>
+                    <div className="text-sm text-gray-500">Guest Player</div>
+                    {/* Creator sees amount owed per guest player */}
+                    {isCreator && perPersonCost && (
+                      <div className={`text-sm mt-1 ${hasGuestPaid ? 'text-green-600 font-medium' : 'text-gray-600'}`}>
+                        {hasGuestPaid ? 'Paid:' : 'Owes:'} ${perPersonCost.toFixed(2)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
             {match.available_slots > 0 && (
               <div className="flex items-center gap-4 p-3 border-2 border-dashed border-gray-300 rounded-lg">
                 <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
@@ -1069,9 +1198,10 @@ export default function MatchDetail() {
           </div>
         </div>
 
-        <div className="flex gap-3 items-center">
-          {matchStatus === 'upcoming' && (match.available_slots > 0 || isBooked) && (
-            <button
+        {isAuthenticated && (
+          <div className="flex gap-3 items-center">
+            {matchStatus === 'upcoming' && (match.available_slots > 0 || isBooked) && (
+              <button
               onClick={handleBookSlot}
               className={`flex-1 py-3 rounded-lg font-medium transition ${
                 isBooked
@@ -1098,7 +1228,8 @@ export default function MatchDetail() {
               <p className="text-gray-600 font-medium">This match is fully booked</p>
             </div>
           )}
-        </div>
+          </div>
+        )}
 
         {/* Payment Section */}
         {(match.total_cost || 0) > 0 && perPersonCost && isBooked && !isCreator && matchStatus !== 'completed' && (

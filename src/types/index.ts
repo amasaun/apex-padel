@@ -60,7 +60,27 @@ export interface BookingPayment {
   updated_at: string;
 }
 
+export interface GuestBooking {
+  id: string;
+  match_id: string;
+  guest_name?: string;
+  guest_number: number;
+  added_by: string;
+  created_at: string;
+}
+
+export interface GuestBookingPayment {
+  id: string;
+  guest_booking_id: string;
+  amount_paid: number;
+  marked_as_paid: boolean;
+  marked_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface MatchWithDetails extends Match {
   bookings: (Booking & { user: User })[];
+  guest_bookings?: GuestBooking[];
   available_slots: number;
 }
