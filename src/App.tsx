@@ -5,6 +5,8 @@ import MatchDetail from './pages/MatchDetail';
 import Profile from './pages/Profile';
 import EditProfile from './pages/EditProfile';
 import Auth from './pages/Auth';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Invites from './pages/Invites';
 import AdminUsers from './pages/AdminUsers';
 import AdminLocations from './pages/AdminLocations';
@@ -22,6 +24,8 @@ function App() {
             <Routes>
               <Route path="/" element={<Navigate to="/matches" replace />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route
                 path="/matches"
                 element={
