@@ -57,9 +57,15 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
     maxPlayers: match.max_players,
     location: match.location,
     isPrivate: match.is_private || false,
+    isTournament: match.is_tournament || false,
     requiredLevel: (match.required_level !== null && match.required_level !== undefined) ? match.required_level : null,
+    requiredLadies: match.required_ladies || 0,
+    requiredLads: match.required_lads || 0,
     genderRequirement: match.gender_requirement || 'all',
-    totalCost: match.total_cost ? String(match.total_cost) : '',
+    pricePerPlayer: match.price_per_player ? String(match.price_per_player) : '',
+    prizeFirst: match.prize_first ? String(match.prize_first) : '',
+    prizeSecond: match.prize_second ? String(match.prize_second) : '',
+    prizeThird: match.prize_third ? String(match.prize_third) : '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>(
@@ -74,12 +80,6 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
 
   useEffect(() => {
     if (isOpen) {
-      console.log('EditMatchModal - match data:', {
-        total_cost: match.total_cost,
-        total_cost_type: typeof match.total_cost,
-        converted: match.total_cost ? String(match.total_cost) : '',
-      });
-
       setFormData({
         title: match.title || '',
         date: match.date,
@@ -88,9 +88,15 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
         maxPlayers: match.max_players,
         location: match.location,
         isPrivate: match.is_private || false,
+        isTournament: match.is_tournament || false,
         requiredLevel: (match.required_level !== null && match.required_level !== undefined) ? match.required_level : null,
+        requiredLadies: match.required_ladies || 0,
+        requiredLads: match.required_lads || 0,
         genderRequirement: match.gender_requirement || 'all',
-        totalCost: match.total_cost ? String(match.total_cost) : '',
+        pricePerPlayer: match.price_per_player ? String(match.price_per_player) : '',
+        prizeFirst: match.prize_first ? String(match.prize_first) : '',
+        prizeSecond: match.prize_second ? String(match.prize_second) : '',
+        prizeThird: match.prize_third ? String(match.prize_third) : '',
       });
       setSelectedPlayers(match.bookings.map((b) => b.user_id));
       setGuestBookings(match.guest_bookings || []);
@@ -125,6 +131,17 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
       newErrors.players = `Cannot have more than ${formData.maxPlayers} players (currently have ${selectedPlayers.length} registered + ${guestBookings.length} guests)`;
     }
 
+    // Tournament validation
+    if (formData.isTournament) {
+      const totalRequired = formData.requiredLadies + formData.requiredLads;
+      if (totalRequired > formData.maxPlayers) {
+        newErrors.tournament = `Gender requirements (${formData.requiredLadies} ladies + ${formData.requiredLads} lads = ${totalRequired}) cannot exceed max players (${formData.maxPlayers})`;
+      }
+      if (totalRequired === 0) {
+        newErrors.tournament = 'Tournaments must specify gender requirements';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -138,6 +155,10 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
 
     setLoading(true);
     try {
+      // Calculate total cost from price per player
+      const pricePerPlayer = formData.pricePerPlayer ? parseFloat(formData.pricePerPlayer) : undefined;
+      const totalCost = pricePerPlayer ? pricePerPlayer * formData.maxPlayers : undefined;
+
       // Update match details
       await updateMatch(match.id, {
         title: formData.title || undefined,
@@ -147,9 +168,16 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
         max_players: formData.maxPlayers,
         location: formData.location,
         is_private: formData.isPrivate,
+        is_tournament: formData.isTournament || undefined,
         required_level: formData.requiredLevel !== null ? formData.requiredLevel : undefined,
+        required_ladies: formData.isTournament && formData.requiredLadies > 0 ? formData.requiredLadies : undefined,
+        required_lads: formData.isTournament && formData.requiredLads > 0 ? formData.requiredLads : undefined,
         gender_requirement: formData.genderRequirement,
-        total_cost: formData.totalCost ? parseFloat(formData.totalCost) : undefined,
+        price_per_player: pricePerPlayer,
+        total_cost: totalCost,
+        prize_first: formData.isTournament && formData.prizeFirst ? parseFloat(formData.prizeFirst) : undefined,
+        prize_second: formData.isTournament && formData.prizeSecond ? parseFloat(formData.prizeSecond) : undefined,
+        prize_third: formData.isTournament && formData.prizeThird ? parseFloat(formData.prizeThird) : undefined,
       });
 
       // Update players
@@ -381,28 +409,191 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
             </select>
           </div>
 
+          {/* Tournament Mode Toggle */}
+          <div className="flex items-center justify-between p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
+            <div className="flex-1">
+              <label htmlFor="isTournament" className="block text-sm font-medium text-gray-900 cursor-pointer">
+                Tournament Mode
+              </label>
+              <p className="text-xs text-gray-600 mt-1">
+                Tournaments allow more players and require gender distribution (ladies/lads quotas).
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={formData.isTournament}
+              onClick={() => {
+                const newIsTournament = !formData.isTournament;
+                const newMaxPlayers = newIsTournament ? Math.max(12, formData.maxPlayers) : Math.min(8, formData.maxPlayers);
+                const half = Math.floor(newMaxPlayers / 2);
+                setFormData({
+                  ...formData,
+                  isTournament: newIsTournament,
+                  maxPlayers: newMaxPlayers,
+                  requiredLadies: newIsTournament ? half : 0,
+                  requiredLads: newIsTournament ? half : 0,
+                });
+              }}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
+                formData.isTournament ? 'bg-orange-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  formData.isTournament ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
           {/* Max Players */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Maximum Players
             </label>
-            <div className="flex gap-4">
-              {MAX_PLAYERS_OPTIONS.map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, maxPlayers: num })}
-                  className={`flex-1 py-3 px-4 rounded-lg font-medium transition ${
-                    formData.maxPlayers === num
-                      ? 'bg-primary text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
+            {formData.isTournament ? (
+              <input
+                type="number"
+                min="4"
+                max="100"
+                value={formData.maxPlayers}
+                onChange={(e) => {
+                  const newMax = parseInt(e.target.value) || 4;
+                  const half = Math.floor(newMax / 2);
+                  setFormData({
+                    ...formData,
+                    maxPlayers: newMax,
+                    requiredLadies: half,
+                    requiredLads: half,
+                  });
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              />
+            ) : (
+              <div className="flex gap-4">
+                {MAX_PLAYERS_OPTIONS.map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, maxPlayers: num })}
+                    className={`flex-1 py-3 px-4 rounded-lg font-medium transition ${
+                      formData.maxPlayers === num
+                        ? 'bg-primary text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* Tournament Gender Requirements */}
+          {formData.isTournament && (
+            <div className="p-4 bg-orange-50 rounded-lg border border-orange-200 space-y-4">
+              <div className="text-sm font-medium text-gray-900 mb-3">
+                Gender Distribution
+              </div>
+              {errors.tournament && (
+                <p className="text-sm text-red-600 mb-2">{errors.tournament}</p>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Required Ladies
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={formData.maxPlayers}
+                    value={formData.requiredLadies}
+                    onChange={(e) => setFormData({ ...formData, requiredLadies: parseInt(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Required Lads
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max={formData.maxPlayers}
+                    value={formData.requiredLads}
+                    onChange={(e) => setFormData({ ...formData, requiredLads: parseInt(e.target.value) || 0 })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500">
+                Total: {formData.requiredLadies + formData.requiredLads} / {formData.maxPlayers} players
+              </p>
+
+              {/* Prize Money */}
+              <div className="pt-4 border-t border-orange-300">
+                <div className="text-sm font-medium text-gray-900 mb-3">
+                  Prize Money 🏆
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      1st Place Prize (required)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.prizeFirst}
+                        onChange={(e) => setFormData({ ...formData, prizeFirst: e.target.value })}
+                        className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        2nd Place (optional)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.prizeSecond}
+                          onChange={(e) => setFormData({ ...formData, prizeSecond: e.target.value })}
+                          className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        3rd Place (optional)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={formData.prizeThird}
+                          onChange={(e) => setFormData({ ...formData, prizeThird: e.target.value })}
+                          className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Player Level Requirement */}
           <div>
@@ -446,26 +637,26 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
             </p>
           </div>
 
-          {/* Total Cost */}
+          {/* Price Per Player */}
           <div>
-            <label htmlFor="totalCost" className="block text-sm font-medium text-gray-700 mb-2">
-              Total Court Cost (optional)
+            <label htmlFor="pricePerPlayer" className="block text-sm font-medium text-gray-700 mb-2">
+              Price Per Player (optional)
             </label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">$</span>
               <input
                 type="number"
-                id="totalCost"
+                id="pricePerPlayer"
                 step="0.01"
                 min="0"
-                value={formData.totalCost}
-                onChange={(e) => setFormData({ ...formData, totalCost: e.target.value })}
+                value={formData.pricePerPlayer}
+                onChange={(e) => setFormData({ ...formData, pricePerPlayer: e.target.value })}
                 className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="0.00"
               />
             </div>
             <p className="mt-1 text-xs text-gray-500">
-              Enter the total amount you paid for the court. This will be split equally among all players who book.
+              Enter the amount each player will pay.
             </p>
           </div>
 

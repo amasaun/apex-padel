@@ -34,9 +34,16 @@ export interface Match {
   max_players: number;
   location: string;
   is_private?: boolean;
+  is_tournament?: boolean; // Whether this is a tournament (allows more players and gender quotas)
   required_level?: number; // Minimum ranking required to join (null = all levels)
+  required_ladies?: number; // Exact number of female players required (tournaments only)
+  required_lads?: number; // Exact number of male players required (tournaments only)
   gender_requirement?: 'all' | 'male_only' | 'female_only'; // Gender requirement (defaults to 'all')
   total_cost?: number; // Total cost paid for the court (will be split among all bookings)
+  price_per_player?: number; // Price per player (total_cost = price_per_player * max_players)
+  prize_first?: number; // 1st place prize (tournaments only)
+  prize_second?: number; // 2nd place prize (tournaments only, optional)
+  prize_third?: number; // 3rd place prize (tournaments only, optional)
   created_by: string;
   created_at: string;
   bookings?: Booking[];

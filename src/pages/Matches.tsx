@@ -751,6 +751,27 @@ export default function Matches() {
                                 <div>📍 {match.location}</div>
                                 <div>⏰ {formatTime(match.time)} ({formatDuration(match.duration)})</div>
                                 <div>👥 {match.available_slots} / {match.max_players} slots available</div>
+                                {match.is_tournament && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-[10px] font-medium border border-orange-300">
+                                      🏆 Tournament
+                                    </span>
+                                  </div>
+                                )}
+                                {match.is_tournament && (match.required_ladies || match.required_lads) && (
+                                  <div className="flex items-center gap-2">
+                                    {match.required_ladies !== undefined && match.required_ladies > 0 && (
+                                      <span className="text-pink-600">
+                                        ♀ {match.bookings.filter((b: any) => b.user?.gender === 'female').length}/{match.required_ladies} Ladies
+                                      </span>
+                                    )}
+                                    {match.required_lads !== undefined && match.required_lads > 0 && (
+                                      <span className="text-blue-600">
+                                        ♂ {match.bookings.filter((b: any) => b.user?.gender === 'male').length}/{match.required_lads} Lads
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                                 {match.required_level !== null && match.required_level !== undefined && (
                                   <div className="flex items-center gap-1">
                                     <span>🎯</span>
@@ -824,6 +845,8 @@ export default function Matches() {
                       ? 'bg-gray-100 border-gray-300 opacity-60 shadow-md'
                       : isFull
                       ? 'bg-gray-100 border-gray-300 opacity-75 shadow-md'
+                      : match.is_tournament
+                      ? 'bg-orange-50 border-orange-200 hover:shadow-xl hover:-translate-y-1 hover:border-orange-300'
                       : 'bg-white border-gray-200 hover:shadow-xl hover:-translate-y-1'
                   }`}
                 >
@@ -849,6 +872,14 @@ export default function Matches() {
                       {isCompleted && (
                         <span className="inline-block px-2 py-0.5 bg-gray-200 text-gray-600 text-xs font-medium rounded-full">
                           ✓ Completed
+                        </span>
+                      )}
+                      {match.is_tournament && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full border-2 border-orange-300">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a2.25 2.25 0 100 4.5h12a2.25 2.25 0 100-4.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.706 6.706 0 00-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744zm0 2.629c0 1.196.312 2.32.857 3.294A5.266 5.266 0 013.16 5.337a45.6 45.6 0 012.006-.343v.256zm13.5 0v-.256c.674.1 1.343.214 2.006.343a5.265 5.265 0 01-2.863 3.207 6.72 6.72 0 00.857-3.294z"/>
+                          </svg>
+                          <span className="hidden sm:inline">Tournament</span>
                         </span>
                       )}
                       {match.is_private && (
@@ -1009,6 +1040,66 @@ export default function Matches() {
                       {match.location.split(' - ')[1]}
                     </span>
                   </div>
+                  {match.is_tournament && (match.required_ladies || match.required_lads) && (
+                    <div className="mt-3 space-y-2">
+                      {match.required_ladies !== undefined && match.required_ladies > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-pink-600 font-medium flex items-center gap-1">
+                              <span>♀</span> Ladies
+                            </span>
+                            <span className={`${isFull ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {match.bookings.filter((b: any) => b.user?.gender === 'female').length}/{match.required_ladies}
+                            </span>
+                          </div>
+                          <div className="w-full bg-pink-100 rounded-full h-1.5">
+                            <div
+                              className="bg-pink-500 h-1.5 rounded-full transition-all"
+                              style={{
+                                width: `${Math.min(100, (match.bookings.filter((b: any) => b.user?.gender === 'female').length / match.required_ladies) * 100)}%`
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                      {match.required_lads !== undefined && match.required_lads > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-blue-600 font-medium flex items-center gap-1">
+                              <span>♂</span> Lads
+                            </span>
+                            <span className={`${isFull ? 'text-gray-400' : 'text-gray-600'}`}>
+                              {match.bookings.filter((b: any) => b.user?.gender === 'male').length}/{match.required_lads}
+                            </span>
+                          </div>
+                          <div className="w-full bg-blue-100 rounded-full h-1.5">
+                            <div
+                              className="bg-blue-500 h-1.5 rounded-full transition-all"
+                              style={{
+                                width: `${Math.min(100, (match.bookings.filter((b: any) => b.user?.gender === 'male').length / match.required_lads) * 100)}%`
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {match.is_tournament && match.prize_first && (
+                    <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-xs">
+                        <svg className="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M5.166 2.621v.858c-1.035.148-2.059.33-3.071.543a.75.75 0 00-.584.859 6.753 6.753 0 006.138 5.6 6.73 6.73 0 002.743 1.346A6.707 6.707 0 019.279 15H8.54c-1.036 0-1.875.84-1.875 1.875V19.5h-.75a2.25 2.25 0 100 4.5h12a2.25 2.25 0 100-4.5h-.75v-2.625c0-1.036-.84-1.875-1.875-1.875h-.739a6.706 6.706 0 00-1.112-3.173 6.73 6.73 0 002.743-1.347 6.753 6.753 0 006.139-5.6.75.75 0 00-.585-.858 47.077 47.077 0 00-3.07-.543V2.62a.75.75 0 00-.658-.744 49.22 49.22 0 00-6.093-.377c-2.063 0-4.096.128-6.093.377a.75.75 0 00-.657.744zm0 2.629c0 1.196.312 2.32.857 3.294A5.266 5.266 0 013.16 5.337a45.6 45.6 0 012.006-.343v.256zm13.5 0v-.256c.674.1 1.343.214 2.006.343a5.265 5.265 0 01-2.863 3.207 6.72 6.72 0 00.857-3.294z"/>
+                        </svg>
+                        <span className="font-semibold text-yellow-800">1st: ${match.prize_first.toFixed(0)}</span>
+                        {match.prize_second && (
+                          <span className="text-yellow-700">• 2nd: ${match.prize_second.toFixed(0)}</span>
+                        )}
+                        {match.prize_third && (
+                          <span className="text-yellow-700">• 3rd: ${match.prize_third.toFixed(0)}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   {!isCompleted && (

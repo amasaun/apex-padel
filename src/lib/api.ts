@@ -252,6 +252,65 @@ export async function deleteMatch(id: string) {
 }
 
 // ============================================
+// TOURNAMENT HELPERS
+// ============================================
+
+export interface GenderQuotaCheck {
+  canBook: boolean;
+  reason?: string;
+  currentLadies: number;
+  currentLads: number;
+  requiredLadies?: number;
+  requiredLads?: number;
+}
+
+export async function checkTournamentGenderQuota(
+  match: MatchWithDetails,
+  userGender: 'female' | 'male' | 'rather_not_say' | null | undefined
+): Promise<GenderQuotaCheck> {
+  // Not a tournament - no gender quota
+  if (!match.is_tournament) {
+    return { canBook: true, currentLadies: 0, currentLads: 0 };
+  }
+
+  // Count current ladies and lads from bookings
+  const currentLadies = match.bookings.filter(b => b.user?.gender === 'female').length;
+  const currentLads = match.bookings.filter(b => b.user?.gender === 'male').length;
+
+  const result: GenderQuotaCheck = {
+    canBook: true,
+    currentLadies,
+    currentLads,
+    requiredLadies: match.required_ladies || undefined,
+    requiredLads: match.required_lads || undefined,
+  };
+
+  // If no gender requirements set, allow booking
+  if (!match.required_ladies && !match.required_lads) {
+    return result;
+  }
+
+  // Check if user's gender would exceed quota
+  if (userGender === 'female') {
+    if (match.required_ladies && currentLadies >= match.required_ladies) {
+      result.canBook = false;
+      result.reason = `Ladies spots are full (${currentLadies}/${match.required_ladies}). Lads spots available (${currentLads}/${match.required_lads || 0}).`;
+    }
+  } else if (userGender === 'male') {
+    if (match.required_lads && currentLads >= match.required_lads) {
+      result.canBook = false;
+      result.reason = `Lads spots are full (${currentLads}/${match.required_lads}). Ladies spots available (${currentLadies}/${match.required_ladies || 0}).`;
+    }
+  } else {
+    // Gender is 'rather_not_say' or null - for tournaments, we need to know gender
+    result.canBook = false;
+    result.reason = 'This tournament requires gender information. Please update your profile.';
+  }
+
+  return result;
+}
+
+// ============================================
 // BOOKINGS
 // ============================================
 
