@@ -486,7 +486,7 @@ export default function MatchDetail() {
           <h2 className="text-2xl font-bold mb-2">Join Apex Padel!</h2>
           <p className="mb-4">Sign up to book matches and join our community.</p>
           <Link
-            to={inviteCode ? `/auth?invite=${inviteCode.code}` : '/auth'}
+            to={inviteCode ? `/auth?invite=${inviteCode}` : '/auth'}
             className="inline-block bg-white text-primary px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
           >
             Sign Up / Sign In
