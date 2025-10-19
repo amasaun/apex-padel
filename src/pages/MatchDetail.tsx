@@ -960,7 +960,7 @@ export default function MatchDetail() {
               </svg>
               Tournament
             </div>
-            {match.prize_first && (
+            {match.prize_first && match.prize_first > 0 && (
               <div className="mt-3 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <svg className="w-5 h-5 text-yellow-600" fill="currentColor" viewBox="0 0 24 24">
@@ -973,13 +973,13 @@ export default function MatchDetail() {
                     <span className="text-sm text-yellow-800">🥇 1st Place:</span>
                     <span className="text-lg font-bold text-yellow-900">${match.prize_first.toFixed(2)}</span>
                   </div>
-                  {match.prize_second && (
+                  {match.prize_second != null && match.prize_second > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-yellow-800">🥈 2nd Place:</span>
                       <span className="text-lg font-semibold text-yellow-800">${match.prize_second.toFixed(2)}</span>
                     </div>
                   )}
-                  {match.prize_third && (
+                  {match.prize_third != null && match.prize_third > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-yellow-800">🥉 3rd Place:</span>
                       <span className="text-lg font-semibold text-yellow-700">${match.prize_third.toFixed(2)}</span>
