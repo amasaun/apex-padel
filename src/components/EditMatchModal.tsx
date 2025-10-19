@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { MatchWithDetails, User, GuestBooking } from '@/types';
 import { LOCATION_DATA } from '@/lib/locations';
 import { getRankingColor, formatRanking } from '@/lib/utils';
-import { updateMatch, getUsers, updateMatchPlayers, createGuestBooking, deleteGuestBooking } from '@/lib/api';
+import { updateMatch, getUsers, updateMatchPlayers, createGuestBooking, deleteGuestBooking, updateGuestBooking } from '@/lib/api';
 import UserAvatar from './UserAvatar';
 
 const LOCATIONS = Object.keys(LOCATION_DATA);
@@ -12,6 +12,16 @@ const DURATIONS = [
   { value: 120, label: '2 hours' },
   { value: 150, label: '2 hours 30 minutes' },
   { value: 180, label: '3 hours' },
+  { value: 210, label: '3 hours 30 minutes' },
+  { value: 240, label: '4 hours' },
+  { value: 270, label: '4 hours 30 minutes' },
+  { value: 300, label: '5 hours' },
+  { value: 330, label: '5 hours 30 minutes' },
+  { value: 360, label: '6 hours' },
+  { value: 390, label: '6 hours 30 minutes' },
+  { value: 420, label: '7 hours' },
+  { value: 450, label: '7 hours 30 minutes' },
+  { value: 480, label: '8 hours' },
 ];
 const MAX_PLAYERS_OPTIONS = [4, 5, 6, 7, 8];
 
@@ -76,7 +86,10 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
   const [loading, setLoading] = useState(false);
   const [guestBookings, setGuestBookings] = useState<GuestBooking[]>([]);
   const [newGuestName, setNewGuestName] = useState('');
+  const [newGuestGender, setNewGuestGender] = useState<'female' | 'male' | 'rather_not_say'>('female');
   const [addingGuest, setAddingGuest] = useState(false);
+  const [editingGuestId, setEditingGuestId] = useState<string | null>(null);
+  const [editGuestGender, setEditGuestGender] = useState<'female' | 'male' | 'rather_not_say' | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -202,9 +215,12 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
 
     setAddingGuest(true);
     try {
-      const newGuest = await createGuestBooking(match.id, newGuestName || undefined);
+      // Pass gender only for tournaments
+      const gender = formData.isTournament ? newGuestGender : undefined;
+      const newGuest = await createGuestBooking(match.id, newGuestName || undefined, gender);
       setGuestBookings([...guestBookings, newGuest]);
       setNewGuestName('');
+      setNewGuestGender('female'); // Reset to default
       onSuccess(); // Refresh match data
     } catch (error: any) {
       alert('Failed to add guest: ' + error.message);
@@ -220,6 +236,20 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
       onSuccess(); // Refresh match data
     } catch (error: any) {
       alert('Failed to remove guest: ' + error.message);
+    }
+  };
+
+  const handleUpdateGuestGender = async (guestId: string, gender: 'female' | 'male' | 'rather_not_say' | null) => {
+    try {
+      await updateGuestBooking(guestId, { gender });
+      setGuestBookings(guestBookings.map(g =>
+        g.id === guestId ? { ...g, gender } : g
+      ));
+      setEditingGuestId(null);
+      setEditGuestGender(null);
+      onSuccess(); // Refresh match data
+    } catch (error: any) {
+      alert('Failed to update guest: ' + error.message);
     }
   };
 
@@ -807,24 +837,77 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
                 {guestBookings.map((guest) => (
                   <div
                     key={guest.id}
-                    className="flex items-center gap-3 p-3 bg-purple-50 border-2 border-purple-200 rounded-lg"
+                    className="p-3 bg-purple-50 border-2 border-purple-200 rounded-lg"
                   >
-                    <div className="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center text-purple-700">
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                      </svg>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-purple-200 flex items-center justify-center text-purple-700">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">{guest.guest_name}</div>
+                        <div className="text-sm text-gray-500">
+                          Guest Player
+                          {guest.gender && (
+                            <span className="ml-2">
+                              • {guest.gender === 'female' ? 'Female' : guest.gender === 'male' ? 'Male' : 'Rather not say'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveGuest(guest.id)}
+                        className="text-red-600 hover:text-red-700 text-sm font-medium"
+                      >
+                        Remove
+                      </button>
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">{guest.guest_name}</div>
-                      <div className="text-sm text-gray-500">Guest Player</div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveGuest(guest.id)}
-                      className="text-red-600 hover:text-red-700 text-sm font-medium"
-                    >
-                      Remove
-                    </button>
+
+                    {/* Gender selector for tournaments */}
+                    {formData.isTournament && (
+                      <div className="mt-3 pt-3 border-t border-purple-200">
+                        <label className="block text-xs font-medium text-gray-700 mb-2">
+                          Gender {!guest.gender && <span className="text-orange-600">(Required for tournaments)</span>}
+                        </label>
+                        <div className="flex gap-3">
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`guest-gender-${guest.id}`}
+                              value="female"
+                              checked={guest.gender === 'female'}
+                              onChange={() => handleUpdateGuestGender(guest.id, 'female')}
+                              className="mr-2"
+                            />
+                            <span className="text-sm">Female</span>
+                          </label>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`guest-gender-${guest.id}`}
+                              value="male"
+                              checked={guest.gender === 'male'}
+                              onChange={() => handleUpdateGuestGender(guest.id, 'male')}
+                              className="mr-2"
+                            />
+                            <span className="text-sm">Male</span>
+                          </label>
+                          <label className="flex items-center cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`guest-gender-${guest.id}`}
+                              value="rather_not_say"
+                              checked={guest.gender === 'rather_not_say'}
+                              onChange={() => handleUpdateGuestGender(guest.id, 'rather_not_say')}
+                              className="mr-2"
+                            />
+                            <span className="text-sm">Rather not say</span>
+                          </label>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -846,6 +929,51 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
                     }
                   }}
                 />
+
+                {/* Gender selector for tournaments */}
+                {formData.isTournament && (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Gender
+                    </label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="guestGender"
+                          value="female"
+                          checked={newGuestGender === 'female'}
+                          onChange={(e) => setNewGuestGender(e.target.value as 'female' | 'male' | 'rather_not_say')}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Female</span>
+                      </label>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="guestGender"
+                          value="male"
+                          checked={newGuestGender === 'male'}
+                          onChange={(e) => setNewGuestGender(e.target.value as 'female' | 'male' | 'rather_not_say')}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Male</span>
+                      </label>
+                      <label className="flex items-center cursor-pointer">
+                        <input
+                          type="radio"
+                          name="guestGender"
+                          value="rather_not_say"
+                          checked={newGuestGender === 'rather_not_say'}
+                          onChange={(e) => setNewGuestGender(e.target.value as 'female' | 'male' | 'rather_not_say')}
+                          className="mr-2"
+                        />
+                        <span className="text-sm">Rather not say</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={handleAddGuest}

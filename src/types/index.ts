@@ -72,6 +72,7 @@ export interface GuestBooking {
   match_id: string;
   guest_name?: string;
   guest_number: number;
+  gender?: 'female' | 'male' | 'rather_not_say';
   added_by: string;
   created_at: string;
 }

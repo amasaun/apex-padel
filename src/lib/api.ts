@@ -607,7 +607,11 @@ export async function markPaymentAsPaid(bookingId: string, amountPaid: number) {
 // GUEST BOOKINGS
 // ============================================
 
-export async function createGuestBooking(matchId: string, guestName?: string) {
+export async function createGuestBooking(
+  matchId: string,
+  guestName?: string,
+  gender?: 'female' | 'male' | 'rather_not_say'
+) {
   // Get next guest number for this match
   const { data: nextNumberData, error: numberError } = await supabase.rpc('get_next_guest_number', {
     p_match_id: matchId,
@@ -627,6 +631,7 @@ export async function createGuestBooking(matchId: string, guestName?: string) {
       match_id: matchId,
       guest_name: finalGuestName,
       guest_number: guestNumber,
+      gender: gender || null,
       added_by: user.user.id,
     })
     .select()
@@ -643,6 +648,24 @@ export async function deleteGuestBooking(guestBookingId: string) {
     .eq('id', guestBookingId);
 
   if (error) throw error;
+}
+
+export async function updateGuestBooking(
+  guestBookingId: string,
+  updates: {
+    guest_name?: string;
+    gender?: 'female' | 'male' | 'rather_not_say' | null;
+  }
+) {
+  const { data, error } = await supabase
+    .from('guest_bookings')
+    .update(updates)
+    .eq('id', guestBookingId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as GuestBooking;
 }
 
 export async function getGuestPaymentsByMatchId(matchId: string) {

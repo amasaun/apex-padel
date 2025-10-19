@@ -68,20 +68,19 @@ export default function MatchDetail() {
   const { data: allPayments = [] } = useQuery({
     queryKey: ['payments', match?.id],
     queryFn: () => getPaymentsByMatchId(match!.id),
-    enabled: !!match?.id && (match.total_cost || 0) > 0,
+    enabled: !!match?.id && match.price_per_player != null && match.price_per_player > 0,
   });
 
   // Fetch all guest payment records for the match
   const { data: allGuestPayments = [] } = useQuery({
     queryKey: ['guestPayments', match?.id],
     queryFn: () => getGuestPaymentsByMatchId(match!.id),
-    enabled: !!match?.id && (match.total_cost || 0) > 0,
+    enabled: !!match?.id && match.price_per_player != null && match.price_per_player > 0,
   });
 
-  // Calculate per-person cost if match has a total cost
-  // Divide by max_players (available slots), not bookings length
-  const perPersonCost = (match?.total_cost || 0) > 0 && match?.max_players
-    ? match.total_cost! / match.max_players
+  // Use price_per_player directly (already calculated in the database)
+  const perPersonCost = match?.price_per_player != null && match.price_per_player > 0
+    ? match.price_per_player
     : null;
 
   // Debug logging for payment visibility
@@ -551,7 +550,7 @@ export default function MatchDetail() {
                     <span>{match.gender_requirement === 'male_only' ? 'Lads' : 'Ladies'}</span>
                   </span>
                 )}
-                {(match.total_cost || 0) > 0 && (
+                {match.price_per_player != null && match.price_per_player > 0 && (
                   <span className="inline-block px-3 py-1 bg-orange-100 text-orange-700 text-sm font-medium rounded-full">
                     💵<span className="hidden sm:inline"> Paid</span>
                   </span>
@@ -1024,14 +1023,14 @@ export default function MatchDetail() {
                   <div className="flex justify-between text-sm text-gray-600 mb-2">
                     <span>Ladies</span>
                     <span className="font-semibold">
-                      {match.bookings.filter(b => b.user?.gender === 'female').length} / {match.required_ladies}
+                      {match.bookings.filter(b => b.user?.gender === 'female').length + guestBookings.filter(g => g.gender === 'female').length} / {match.required_ladies}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3">
                     <div
                       className="bg-pink-500 h-3 rounded-full transition-all"
                       style={{
-                        width: `${Math.min(100, (match.bookings.filter(b => b.user?.gender === 'female').length / match.required_ladies) * 100)}%`
+                        width: `${Math.min(100, ((match.bookings.filter(b => b.user?.gender === 'female').length + guestBookings.filter(g => g.gender === 'female').length) / match.required_ladies) * 100)}%`
                       }}
                     />
                   </div>
@@ -1042,14 +1041,14 @@ export default function MatchDetail() {
                   <div className="flex justify-between text-sm text-gray-600 mb-2">
                     <span>Lads</span>
                     <span className="font-semibold">
-                      {match.bookings.filter(b => b.user?.gender === 'male').length} / {match.required_lads}
+                      {match.bookings.filter(b => b.user?.gender === 'male').length + guestBookings.filter(g => g.gender === 'male').length} / {match.required_lads}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3">
                     <div
                       className="bg-blue-500 h-3 rounded-full transition-all"
                       style={{
-                        width: `${Math.min(100, (match.bookings.filter(b => b.user?.gender === 'male').length / match.required_lads) * 100)}%`
+                        width: `${Math.min(100, ((match.bookings.filter(b => b.user?.gender === 'male').length + guestBookings.filter(g => g.gender === 'male').length) / match.required_lads) * 100)}%`
                       }}
                     />
                   </div>
@@ -1071,7 +1070,7 @@ export default function MatchDetail() {
               return 0;
             }).map((booking) => {
               const hasPaid = isBookingPaid(booking.id);
-              const showPaymentStatus = (match.total_cost || 0) > 0 && (isCreator || isBooked);
+              const showPaymentStatus = match.price_per_player != null && match.price_per_player > 0 && (isCreator || isBooked);
 
               return (
                 <Link
@@ -1099,6 +1098,23 @@ export default function MatchDetail() {
                           <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                           <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
                         </svg>
+                      </div>
+                    )}
+                    {/* Gender badge for tournaments */}
+                    {match.is_tournament && (
+                      <div
+                        className={`absolute -top-1 -right-1 ${
+                          booking.user.gender === 'female' ? 'bg-pink-500' :
+                          booking.user.gender === 'male' ? 'bg-blue-500' :
+                          'bg-gray-400'
+                        } text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm text-xs`}
+                        title={
+                          booking.user.gender === 'female' ? 'Female' :
+                          booking.user.gender === 'male' ? 'Male' :
+                          'Rather not say'
+                        }
+                      >
+                        {booking.user.gender === 'female' ? '♀' : booking.user.gender === 'male' ? '♂' : '⚪'}
                       </div>
                     )}
                     {/* Payment status badge */}
@@ -1189,7 +1205,7 @@ export default function MatchDetail() {
             {/* Guest Players */}
             {guestBookings.map((guestBooking) => {
               const hasGuestPaid = isGuestBookingPaid(guestBooking.id);
-              const showPaymentStatus = (match.total_cost || 0) > 0 && (isCreator || isBooked);
+              const showPaymentStatus = match.price_per_player != null && match.price_per_player > 0 && (isCreator || isBooked);
 
               return (
                 <div
@@ -1202,6 +1218,23 @@ export default function MatchDetail() {
                         <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                       </svg>
                     </div>
+                    {/* Gender badge for tournaments */}
+                    {match.is_tournament && (
+                      <div
+                        className={`absolute -top-1 -right-1 ${
+                          guestBooking.gender === 'female' ? 'bg-pink-500' :
+                          guestBooking.gender === 'male' ? 'bg-blue-500' :
+                          'bg-gray-400'
+                        } text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm text-xs`}
+                        title={
+                          guestBooking.gender === 'female' ? 'Female' :
+                          guestBooking.gender === 'male' ? 'Male' :
+                          'Rather not say'
+                        }
+                      >
+                        {guestBooking.gender === 'female' ? '♀' : guestBooking.gender === 'male' ? '♂' : '⚪'}
+                      </div>
+                    )}
                     {/* Payment status badge for guests */}
                     {showPaymentStatus && (
                       <button
@@ -1305,7 +1338,7 @@ export default function MatchDetail() {
             >
               {isBooked ? 'Give Up My Spot' : (
                 <>
-                  Book a Slot{(match.total_cost || 0) > 0 && match.price_per_player && (
+                  Book a Slot{match.price_per_player != null && match.price_per_player > 0 && (
                     <> for 💵${match.price_per_player.toFixed(2)}</>
                   )}
                 </>
@@ -1332,7 +1365,7 @@ export default function MatchDetail() {
         )}
 
         {/* Payment Section */}
-        {(match.total_cost || 0) > 0 && perPersonCost && isBooked && !isCreator && matchStatus !== 'completed' && (
+        {match.price_per_player != null && match.price_per_player > 0 && perPersonCost && isBooked && !isCreator && matchStatus !== 'completed' && (
           <div className="mt-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">💵 Payment Required</h3>
             <div className="flex items-center justify-between mb-4">
@@ -1397,7 +1430,7 @@ export default function MatchDetail() {
         )}
 
         {/* Creator Payment View */}
-        {(match.total_cost || 0) > 0 && (isCreator || isAdmin) && (
+        {match.price_per_player != null && match.price_per_player > 0 && (isCreator || isAdmin) && (
           <div className="mt-6 p-6 bg-gray-50 border border-gray-200 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment Summary</h3>
             <div className="mb-4">

@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS guest_bookings (
   match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
   guest_name TEXT,
   guest_number INTEGER NOT NULL,
+  gender TEXT CHECK (gender IN ('female', 'male', 'rather_not_say')),
   added_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   UNIQUE(match_id, guest_number)
@@ -183,6 +184,7 @@ BEGIN
             'match_id', gb.match_id,
             'guest_name', gb.guest_name,
             'guest_number', gb.guest_number,
+            'gender', gb.gender,
             'added_by', gb.added_by,
             'created_at', gb.created_at
           )
