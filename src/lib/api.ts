@@ -291,16 +291,26 @@ export interface GenderQuotaCheck {
 
 export async function checkTournamentGenderQuota(
   match: MatchWithDetails,
-  userGender: 'female' | 'male' | 'rather_not_say' | null | undefined
+  userGender: 'female' | 'male' | 'rather_not_say' | null | undefined,
+  userMatchGender?: 'female' | 'male' | null
 ): Promise<GenderQuotaCheck> {
   // Not a tournament - no gender quota
   if (!match.is_tournament) {
     return { canBook: true, currentLadies: 0, currentLads: 0 };
   }
 
-  // Count current ladies and lads from bookings
-  const currentLadies = match.bookings.filter(b => b.user?.gender === 'female').length;
-  const currentLads = match.bookings.filter(b => b.user?.gender === 'male').length;
+  // Count current ladies and lads from bookings (prefer user gender, fall back to match_gender)
+  const currentLadies = match.bookings.filter(b => {
+    const userGender = b.user?.gender;
+    const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+    return displayGender === 'female';
+  }).length + (match.guest_bookings || []).filter(g => g.gender === 'female').length;
+
+  const currentLads = match.bookings.filter(b => {
+    const userGender = b.user?.gender;
+    const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+    return displayGender === 'male';
+  }).length + (match.guest_bookings || []).filter(g => g.gender === 'male').length;
 
   const result: GenderQuotaCheck = {
     canBook: true,
@@ -315,13 +325,16 @@ export async function checkTournamentGenderQuota(
     return result;
   }
 
+  // Determine effective gender (prefer profile gender, fall back to match_gender)
+  const effectiveGender = (userGender && userGender !== 'rather_not_say') ? userGender : userMatchGender;
+
   // Check if user's gender would exceed quota
-  if (userGender === 'female') {
+  if (effectiveGender === 'female') {
     if (match.required_ladies && currentLadies >= match.required_ladies) {
       result.canBook = false;
       result.reason = `Ladies spots are full (${currentLadies}/${match.required_ladies}). Lads spots available (${currentLads}/${match.required_lads || 0}).`;
     }
-  } else if (userGender === 'male') {
+  } else if (effectiveGender === 'male') {
     if (match.required_lads && currentLads >= match.required_lads) {
       result.canBook = false;
       result.reason = `Lads spots are full (${currentLads}/${match.required_lads}). Ladies spots available (${currentLadies}/${match.required_ladies || 0}).`;
@@ -329,7 +342,7 @@ export async function checkTournamentGenderQuota(
   } else {
     // Gender is 'rather_not_say' or null - for tournaments, we need to know gender
     result.canBook = false;
-    result.reason = 'This tournament requires gender information. Please update your profile.';
+    result.reason = 'This tournament requires gender information. Please update your profile or contact the match creator.';
   }
 
   return result;
