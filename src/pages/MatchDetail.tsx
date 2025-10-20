@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMatchById, deleteMatch, createBooking, deleteBookingByUserAndMatch, getUserById, getPaymentByBookingId, createOrUpdatePayment, getPaymentsByMatchId, getGuestPaymentsByMatchId, createOrUpdateGuestPayment, checkTournamentGenderQuota } from '@/lib/api';
@@ -58,11 +58,20 @@ export default function MatchDetail() {
   const currentUserBooking = bookings.find((booking: any) => booking.user_id === currentUser?.id);
 
   // Fetch payment info for current user's booking
-  const { data: currentUserPayment } = useQuery({
+  const { data: currentUserPayment, refetch: refetchPayment } = useQuery({
     queryKey: ['payment', currentUserBooking?.id],
     queryFn: () => getPaymentByBookingId(currentUserBooking!.id),
     enabled: !!currentUserBooking?.id,
   });
+
+  // Debug: Log payment status changes
+  useEffect(() => {
+    console.log('💳 Payment Status Update:', {
+      bookingId: currentUserBooking?.id,
+      isPaid: currentUserPayment?.marked_as_paid,
+      paymentData: currentUserPayment,
+    });
+  }, [currentUserPayment, currentUserBooking?.id]);
 
   // Fetch all payment records for the match (for creator view)
   const { data: allPayments = [] } = useQuery({
@@ -119,8 +128,33 @@ export default function MatchDetail() {
       if (!currentUserBooking || !perPersonCost) throw new Error('Missing booking or cost info');
       return createOrUpdatePayment(currentUserBooking.id, perPersonCost, newPaidStatus);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['payment', currentUserBooking?.id] });
+    onMutate: async (newPaidStatus: boolean) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['payment', currentUserBooking?.id] });
+
+      // Snapshot the previous value
+      const previousPayment = queryClient.getQueryData(['payment', currentUserBooking?.id]);
+
+      // Optimistically update to the new value
+      queryClient.setQueryData(['payment', currentUserBooking?.id], (old: any) => ({
+        ...old,
+        marked_as_paid: newPaidStatus,
+        marked_at: newPaidStatus ? new Date().toISOString() : null,
+      }));
+
+      // Return context with the snapshot
+      return { previousPayment };
+    },
+    onError: (_err, _newPaidStatus, context) => {
+      // Rollback on error
+      if (context?.previousPayment) {
+        queryClient.setQueryData(['payment', currentUserBooking?.id], context.previousPayment);
+      }
+    },
+    onSuccess: async () => {
+      // Explicitly refetch the payment data
+      await refetchPayment();
+      // Also invalidate other related queries
       queryClient.invalidateQueries({ queryKey: ['payments', match?.id] });
       queryClient.invalidateQueries({ queryKey: ['match', id] });
     },
@@ -270,13 +304,16 @@ export default function MatchDetail() {
   const handleTogglePayment = async () => {
     try {
       const newStatus = !currentUserPayment?.marked_as_paid;
+      console.log('🔄 Toggling payment:', { currentStatus: currentUserPayment?.marked_as_paid, newStatus });
       await togglePaymentMutation.mutateAsync(newStatus);
+      console.log('✅ Payment toggle complete');
       if (newStatus) {
         alert('Payment marked as sent! The match creator will verify.');
       } else {
         alert('Payment status cleared. You can mark it again when you pay.');
       }
     } catch (error: any) {
+      console.error('❌ Payment toggle failed:', error);
       alert(error.message || 'Failed to update payment status');
     }
   };
@@ -908,6 +945,89 @@ export default function MatchDetail() {
           </div>
         </div>
 
+        {/* Payment Section - Show above map for booked players */}
+        {match.price_per_player != null && match.price_per_player > 0 && perPersonCost && isBooked && matchStatus !== 'completed' && (
+          <div className="mb-6">
+            {currentUserPayment?.marked_as_paid ? (
+              // Prominent PAID status
+              <div className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-500 rounded-lg shadow-md">
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="bg-green-500 rounded-full p-2">
+                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-green-800">PAYMENT SENT</h3>
+                    <p className="text-sm text-green-700">You've marked your payment as sent</p>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-green-200">
+                  <p className="text-sm text-green-700">Amount: <span className="font-bold text-lg">${perPersonCost.toFixed(2)}</span></p>
+                </div>
+              </div>
+            ) : (
+              // Payment required - show payment links
+              <div className="p-6 bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-md">
+                <h3 className="text-lg font-bold text-yellow-900 mb-3 flex items-center gap-2">
+                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  Payment Required
+                </h3>
+                <div className="mb-4">
+                  <p className="text-sm text-gray-700">Price per player:</p>
+                  <p className="text-3xl font-bold text-gray-900">${perPersonCost.toFixed(2)}</p>
+                </div>
+
+                <p className="text-sm text-gray-700 mb-4 font-medium">Pay {matchCreator?.name}:</p>
+                <div className="space-y-3">
+                  {matchCreator?.venmo_username && (
+                    <button
+                      onClick={handlePayVenmo}
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition shadow-sm"
+                    >
+                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19.83 4.18c.84 1.3 1.17 2.58 1.17 4.16 0 5.2-4.42 11.96-8.03 16.66H7.5L4.16 4.66h5.7l1.76 10.9c1.46-2.4 3.24-5.87 3.24-8.49 0-1.4-.27-2.37-.71-3.06l5.68-1.83z"/>
+                      </svg>
+                      Pay with Venmo
+                    </button>
+                  )}
+                  {matchCreator?.zelle_handle && (
+                    <button
+                      onClick={handleCopyZelle}
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition shadow-sm"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Copy Zelle Info
+                    </button>
+                  )}
+                  <div className="pt-3 border-t border-yellow-300">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={currentUserPayment?.marked_as_paid || false}
+                        onChange={handleTogglePayment}
+                        disabled={togglePaymentMutation.isPending}
+                        className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-gray-800">
+                        Mark as sent when you pay
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {!matchCreator?.venmo_username && !matchCreator?.zelle_handle && (
+                  <p className="text-sm text-gray-600 italic mt-4">The match creator hasn't set up payment information yet.</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Location Map */}
         {LOCATION_DATA[match.location]?.coordinates && (
           <div className="mb-8">
@@ -1364,70 +1484,6 @@ export default function MatchDetail() {
           </div>
         )}
 
-        {/* Payment Section */}
-        {match.price_per_player != null && match.price_per_player > 0 && perPersonCost && isBooked && !isCreator && matchStatus !== 'completed' && (
-          <div className="mt-6 p-6 bg-blue-50 border border-blue-200 rounded-lg">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">💵 Payment Required</h3>
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <p className="text-sm text-gray-600">Price per player:</p>
-                <p className="text-2xl font-bold text-gray-900">${perPersonCost.toFixed(2)}</p>
-              </div>
-              {currentUserPayment?.marked_as_paid && (
-                <div className="flex items-center gap-2 text-green-600">
-                  <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                  <span className="font-medium">Marked as Paid</span>
-                </div>
-              )}
-            </div>
-
-            <p className="text-sm text-gray-700 mb-4">Pay {matchCreator?.name}:</p>
-            <div className="space-y-3">
-              {matchCreator?.venmo_username && (
-                <button
-                  onClick={handlePayVenmo}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
-                >
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19.83 4.18c.84 1.3 1.17 2.58 1.17 4.16 0 5.2-4.42 11.96-8.03 16.66H7.5L4.16 4.66h5.7l1.76 10.9c1.46-2.4 3.24-5.87 3.24-8.49 0-1.4-.27-2.37-.71-3.06l5.68-1.83z"/>
-                  </svg>
-                  Pay with Venmo
-                </button>
-              )}
-              {matchCreator?.zelle_handle && (
-                <button
-                  onClick={handleCopyZelle}
-                  className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Copy Zelle Info
-                </button>
-              )}
-              <div className="pt-3 border-t border-blue-200">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={currentUserPayment?.marked_as_paid || false}
-                    onChange={handleTogglePayment}
-                    disabled={togglePaymentMutation.isPending}
-                    className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">
-                    {currentUserPayment?.marked_as_paid ? 'I sent the payment' : 'Mark as sent when you pay'}
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            {!matchCreator?.venmo_username && !matchCreator?.zelle_handle && (
-              <p className="text-sm text-gray-600 italic">The match creator hasn't set up payment information yet.</p>
-            )}
-          </div>
-        )}
 
         {/* Creator Payment View */}
         {match.price_per_player != null && match.price_per_player > 0 && (isCreator || isAdmin) && (
