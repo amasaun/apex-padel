@@ -1180,7 +1180,7 @@ export default function Matches() {
                       if (a.user.id === match.created_by) return -1;
                       if (b.user.id === match.created_by) return 1;
                       return 0;
-                    }).slice(0, 8).map((booking) => {
+                    }).map((booking) => {
                       const hasPaid = isBookingPaid(match.id, booking.id);
                       const showPaymentStatus = match.price_per_player != null && match.price_per_player > 0 && (match.created_by === currentUser?.id || match.bookings.some((b: any) => b.user_id === currentUser?.id));
 
