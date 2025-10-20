@@ -20,6 +20,7 @@ export default function EditProfile() {
     share_contact_info: false,
     venmo_username: '',
     zelle_handle: '',
+    gender: 'rather_not_say' as 'female' | 'male' | 'rather_not_say',
   });
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export default function EditProfile() {
         share_contact_info: profile.share_contact_info || false,
         venmo_username: profile.venmo_username || '',
         zelle_handle: profile.zelle_handle || '',
+        gender: profile.gender || 'rather_not_say',
       });
     } catch (err: any) {
       setError(err.message);
@@ -82,6 +84,7 @@ export default function EditProfile() {
         share_contact_info: formData.share_contact_info,
         venmo_username: formData.venmo_username || undefined,
         zelle_handle: formData.zelle_handle || undefined,
+        gender: formData.gender,
       });
 
       navigate(`/profile/${user.id}`);
@@ -182,6 +185,22 @@ export default function EditProfile() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="+1234567890"
             />
+          </div>
+
+          {/* Gender */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Gender
+            </label>
+            <select
+              value={formData.gender}
+              onChange={(e) => setFormData({ ...formData, gender: e.target.value as 'female' | 'male' | 'rather_not_say' })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            >
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="rather_not_say">Rather not say</option>
+            </select>
           </div>
 
           {/* Payment Settings Section */}
