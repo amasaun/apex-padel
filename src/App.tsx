@@ -30,7 +30,6 @@ function AuthListener() {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const accessToken = hashParams.get('access_token');
     const type = hashParams.get('type');
-    const refreshToken = hashParams.get('refresh_token');
 
     if (accessToken && type === 'recovery') {
       console.log('✅ Found recovery token in URL');

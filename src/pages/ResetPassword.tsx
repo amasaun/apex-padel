@@ -32,7 +32,7 @@ export default function ResetPassword() {
     checkSession();
 
     // Also listen for auth state changes in case the session is set after component mounts
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       console.log('Reset Password - Auth event:', event);
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         setValidToken(true);
