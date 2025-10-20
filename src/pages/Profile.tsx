@@ -156,6 +156,50 @@ export default function Profile() {
           </div>
         </div>
 
+        {(user.venmo_username || user.zelle_handle) && (
+          <div className="border-t border-gray-200 pt-6 mt-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Payment Options</h2>
+            <div className="bg-gray-50 rounded-lg p-4">
+              <p className="text-sm text-gray-700 mb-3 font-medium">Pay {user.name}:</p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {user.venmo_username && (
+                  <button
+                    onClick={() => {
+                      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                      if (isMobile) {
+                        window.location.href = `venmo://pay?txn=charge&recipients=${user.venmo_username}`;
+                      } else {
+                        window.open(`https://venmo.com/${user.venmo_username}`, '_blank');
+                      }
+                    }}
+                    className="flex-1 flex items-center justify-center gap-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition shadow-sm"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19.83 4.18c.84 1.3 1.17 2.58 1.17 4.16 0 5.2-4.42 11.96-8.03 16.66H7.5L4.16 4.66h5.7l1.76 10.9c1.46-2.4 3.24-5.87 3.24-8.49 0-1.4-.27-2.37-.71-3.06l5.68-1.83z"/>
+                    </svg>
+                    Pay with Venmo
+                  </button>
+                )}
+                {user.zelle_handle && (
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(user.zelle_handle!).then(() => {
+                        alert(`Zelle handle copied: ${user.zelle_handle}`);
+                      });
+                    }}
+                    className="flex-1 flex items-center justify-center gap-3 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition shadow-sm"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy Zelle Info
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {playingPartners && playingPartners.length > 0 && (
           <div className="border-t border-gray-200 pt-6 mt-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Played With</h2>
