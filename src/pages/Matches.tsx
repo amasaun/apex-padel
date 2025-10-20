@@ -866,15 +866,15 @@ export default function Matches() {
                       : 'bg-white border-gray-200 hover:shadow-xl hover:-translate-y-1'
                   }`}
                 >
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4">
+                <div className="flex-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
                     {match.title && (
                       <div className={`text-lg font-semibold ${isFull ? 'text-gray-500' : 'text-gray-900'}`}>
                         {match.title}
                       </div>
                     )}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap">
                       {isMatchStartingSoon(match.date, match.time) && !isInProgress && !isCompleted && (
                         <span className="inline-block px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full animate-pulse border border-orange-300">
                           ⏰ Starting Soon
@@ -1014,6 +1014,22 @@ export default function Matches() {
                       })()}
                     </div>
                   </div>
+                  {!isCompleted && (
+                    <div className="sm:hidden mb-2">
+                      {isFull ? (
+                        <div className="inline-block bg-gray-500 text-white px-3 py-1 rounded-lg font-bold text-xs">
+                          FULL
+                        </div>
+                      ) : (
+                        <div className="inline-flex items-baseline gap-1">
+                          <span className="text-xs text-gray-500">Available:</span>
+                          <span className="text-lg font-bold text-primary">
+                            {match.available_slots}/{match.max_players}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className={`text-sm mb-1 ${isFull ? 'text-gray-400' : 'text-gray-500'}`}>
                     {formatDate(match.date)}
                   </div>
@@ -1133,7 +1149,7 @@ export default function Matches() {
                     </div>
                   )}
                 </div>
-                <div className="text-right">
+                <div className="hidden sm:block text-right flex-shrink-0">
                   {!isCompleted && (
                     <>
                       {isFull ? (

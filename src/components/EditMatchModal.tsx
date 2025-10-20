@@ -237,6 +237,32 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
       return;
     }
 
+    // Check tournament gender quota for guests
+    if (formData.isTournament && (formData.requiredLadies || formData.requiredLads)) {
+      // Count current ladies and lads (prefer user gender, fall back to match_gender)
+      const currentLadies = match.bookings.filter(b => {
+        const userGender = b.user?.gender;
+        const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+        return displayGender === 'female';
+      }).length + guestBookings.filter(g => g.gender === 'female').length;
+
+      const currentLads = match.bookings.filter(b => {
+        const userGender = b.user?.gender;
+        const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+        return displayGender === 'male';
+      }).length + guestBookings.filter(g => g.gender === 'male').length;
+
+      // Check if adding this guest would exceed quota
+      if (newGuestGender === 'female' && formData.requiredLadies && currentLadies >= formData.requiredLadies) {
+        alert(`Cannot add female guest. Ladies spots are full (${currentLadies}/${formData.requiredLadies}). Lads spots available (${currentLads}/${formData.requiredLads || 0}).`);
+        return;
+      }
+      if (newGuestGender === 'male' && formData.requiredLads && currentLads >= formData.requiredLads) {
+        alert(`Cannot add male guest. Lads spots are full (${currentLads}/${formData.requiredLads}). Ladies spots available (${currentLadies}/${formData.requiredLadies || 0}).`);
+        return;
+      }
+    }
+
     setAddingGuest(true);
     try {
       // Pass gender only for tournaments
@@ -264,6 +290,32 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
   };
 
   const handleUpdateGuestGender = async (guestId: string, gender: 'female' | 'male' | 'rather_not_say' | null) => {
+    // Check tournament gender quota before updating
+    if (formData.isTournament && (formData.requiredLadies || formData.requiredLads) && (gender === 'female' || gender === 'male')) {
+      // Count current ladies and lads (excluding the guest being updated)
+      const currentLadies = match.bookings.filter(b => {
+        const userGender = b.user?.gender;
+        const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+        return displayGender === 'female';
+      }).length + guestBookings.filter(g => g.id !== guestId && g.gender === 'female').length;
+
+      const currentLads = match.bookings.filter(b => {
+        const userGender = b.user?.gender;
+        const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+        return displayGender === 'male';
+      }).length + guestBookings.filter(g => g.id !== guestId && g.gender === 'male').length;
+
+      // Check if changing to this gender would exceed quota
+      if (gender === 'female' && formData.requiredLadies && currentLadies >= formData.requiredLadies) {
+        alert(`Cannot change to female. Ladies spots are full (${currentLadies}/${formData.requiredLadies}). Lads spots available (${currentLads}/${formData.requiredLads || 0}).`);
+        return;
+      }
+      if (gender === 'male' && formData.requiredLads && currentLads >= formData.requiredLads) {
+        alert(`Cannot change to male. Lads spots are full (${currentLads}/${formData.requiredLads}). Ladies spots available (${currentLadies}/${formData.requiredLadies || 0}).`);
+        return;
+      }
+    }
+
     try {
       await updateGuestBooking(guestId, { gender });
       setGuestBookings(guestBookings.map(g =>
@@ -302,6 +354,43 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
             }
             if (formData.genderRequirement === 'female_only' && playerGender !== 'female') {
               alert(`${player.name} cannot be added. This match is for female players only.`);
+              return;
+            }
+          }
+
+          // Check tournament gender quota
+          if (formData.isTournament && (formData.requiredLadies || formData.requiredLads)) {
+            // Get player's match_gender if they have one
+            const existingBooking = match.bookings.find(b => b.user_id === userId);
+            const playerMatchGender = existingBooking?.match_gender;
+
+            // Determine effective gender (prefer profile gender, fall back to match_gender)
+            const effectiveGender = (player.gender && player.gender !== 'rather_not_say') ? player.gender : playerMatchGender;
+
+            // Count current ladies and lads (prefer user gender, fall back to match_gender)
+            const currentLadies = match.bookings.filter(b => {
+              const userGender = b.user?.gender;
+              const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+              return displayGender === 'female';
+            }).length + guestBookings.filter(g => g.gender === 'female').length;
+
+            const currentLads = match.bookings.filter(b => {
+              const userGender = b.user?.gender;
+              const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+              return displayGender === 'male';
+            }).length + guestBookings.filter(g => g.gender === 'male').length;
+
+            // Check if adding this player would exceed quota
+            if (effectiveGender === 'female' && formData.requiredLadies && currentLadies >= formData.requiredLadies) {
+              alert(`Cannot add ${player.name}. Ladies spots are full (${currentLadies}/${formData.requiredLadies}). Lads spots available (${currentLads}/${formData.requiredLads || 0}).`);
+              return;
+            }
+            if (effectiveGender === 'male' && formData.requiredLads && currentLads >= formData.requiredLads) {
+              alert(`Cannot add ${player.name}. Lads spots are full (${currentLads}/${formData.requiredLads}). Ladies spots available (${currentLadies}/${formData.requiredLadies || 0}).`);
+              return;
+            }
+            if (!effectiveGender) {
+              alert(`Cannot add ${player.name}. This tournament requires gender information. Please assign a gender for this player.`);
               return;
             }
           }
@@ -788,6 +877,34 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
                                   userId: user.id,
                                   newGender: genderValue
                                 });
+
+                                // Check tournament gender quota before updating
+                                if (formData.isTournament && (formData.requiredLadies || formData.requiredLads) && (genderValue === 'female' || genderValue === 'male')) {
+                                  // Count current ladies and lads (excluding this user)
+                                  const currentLadies = match.bookings.filter(b => {
+                                    if (b.user_id === user.id) return false; // Exclude current user
+                                    const userGender = b.user?.gender;
+                                    const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+                                    return displayGender === 'female';
+                                  }).length + guestBookings.filter(g => g.gender === 'female').length;
+
+                                  const currentLads = match.bookings.filter(b => {
+                                    if (b.user_id === user.id) return false; // Exclude current user
+                                    const userGender = b.user?.gender;
+                                    const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+                                    return displayGender === 'male';
+                                  }).length + guestBookings.filter(g => g.gender === 'male').length;
+
+                                  // Check if changing to this gender would exceed quota
+                                  if (genderValue === 'female' && formData.requiredLadies && currentLadies >= formData.requiredLadies) {
+                                    alert(`Cannot change to female. Ladies spots are full (${currentLadies}/${formData.requiredLadies}). Lads spots available (${currentLads}/${formData.requiredLads || 0}).`);
+                                    return;
+                                  }
+                                  if (genderValue === 'male' && formData.requiredLads && currentLads >= formData.requiredLads) {
+                                    alert(`Cannot change to male. Lads spots are full (${currentLads}/${formData.requiredLads}). Ladies spots available (${currentLadies}/${formData.requiredLadies || 0}).`);
+                                    return;
+                                  }
+                                }
 
                                 // Update local state immediately
                                 setPlayerMatchGenders(prev => ({
