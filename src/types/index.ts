@@ -53,6 +53,7 @@ export interface Booking {
   id: string;
   match_id: string;
   user_id: string;
+  match_gender?: 'male' | 'female' | null;
   created_at: string;
   user?: User;
 }

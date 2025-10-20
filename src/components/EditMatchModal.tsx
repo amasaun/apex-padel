@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MatchWithDetails, User, GuestBooking } from '@/types';
 import { LOCATION_DATA } from '@/lib/locations';
 import { getRankingColor, formatRanking } from '@/lib/utils';
-import { updateMatch, getUsers, updateMatchPlayers, createGuestBooking, deleteGuestBooking, updateGuestBooking } from '@/lib/api';
+import { updateMatch, getUsers, updateMatchPlayers, createGuestBooking, deleteGuestBooking, updateGuestBooking, updateBookingMatchGender } from '@/lib/api';
+import { getCurrentUser } from '@/lib/auth';
 import UserAvatar from './UserAvatar';
 
 const LOCATIONS = Object.keys(LOCATION_DATA);
@@ -54,6 +56,8 @@ interface EditMatchModalProps {
 }
 
 export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: EditMatchModalProps) {
+  const navigate = useNavigate();
+
   // Ensure time is in HH:MM format (remove seconds if present)
   const normalizeTime = (time: string) => {
     return time.split(':').slice(0, 2).join(':');
@@ -88,6 +92,12 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
   const [newGuestName, setNewGuestName] = useState('');
   const [newGuestGender, setNewGuestGender] = useState<'female' | 'male' | 'rather_not_say'>('female');
   const [addingGuest, setAddingGuest] = useState(false);
+  // Track match_gender for each user (userId -> gender)
+  const [playerMatchGenders, setPlayerMatchGenders] = useState<Record<string, 'male' | 'female' | null>>(
+    Object.fromEntries(
+      match.bookings.map(b => [b.user_id, b.match_gender || null])
+    )
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -111,6 +121,11 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
       });
       setSelectedPlayers(match.bookings.map((b) => b.user_id));
       setGuestBookings(match.guest_bookings || []);
+      setPlayerMatchGenders(
+        Object.fromEntries(
+          match.bookings.map(b => [b.user_id, b.match_gender || null])
+        )
+      );
 
       // Load all users
       getUsers().then(setAllUsers).catch(console.error);
@@ -166,6 +181,11 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
 
     setLoading(true);
     try {
+      // Check if we're marking the match as private and current user is not the creator
+      const markingAsPrivate = formData.isPrivate && !match.is_private;
+      const currentUser = await getCurrentUser();
+      const isNotCreator = currentUser?.id !== match.created_by;
+
       // Calculate total cost from price per player
       const pricePerPlayer = formData.pricePerPlayer ? parseFloat(formData.pricePerPlayer) : undefined;
       const totalCost = pricePerPlayer ? pricePerPlayer * formData.maxPlayers : undefined;
@@ -195,8 +215,14 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
       await updateMatchPlayers(match.id, selectedPlayers);
 
       setErrors({});
-      onSuccess();
       onClose();
+
+      // If admin marked someone else's match as private, navigate to matches list
+      if (markingAsPrivate && isNotCreator) {
+        navigate('/matches');
+      } else {
+        onSuccess();
+      }
     } catch (error: any) {
       setErrors({ submit: error.message || 'Failed to update match' });
     } finally {
@@ -747,6 +773,54 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
                       <div className="flex-1">
                         <div className="font-medium text-gray-900">{user.name}</div>
                         <div className="text-sm text-gray-500">Rank: {formatRanking(user.ranking)}</div>
+                        {/* Show gender selector for tournament matches if user has 'rather_not_say' or null gender */}
+                        {formData.isTournament && (!user.gender || user.gender === 'rather_not_say') && (
+                          <div className="mt-2">
+                            <label className="text-xs text-gray-600">Match Gender:</label>
+                            <select
+                              value={playerMatchGenders[user.id] || ''}
+                              onChange={async (e) => {
+                                const newGender = e.target.value as 'male' | 'female' | '';
+                                const genderValue = newGender || null;
+
+                                console.log('Updating match gender:', {
+                                  matchId: match.id,
+                                  userId: user.id,
+                                  newGender: genderValue
+                                });
+
+                                // Update local state immediately
+                                setPlayerMatchGenders(prev => ({
+                                  ...prev,
+                                  [user.id]: genderValue as 'male' | 'female' | null
+                                }));
+
+                                // Persist to database
+                                try {
+                                  await updateBookingMatchGender(
+                                    match.id,
+                                    user.id,
+                                    genderValue
+                                  );
+                                  console.log('Match gender updated successfully');
+                                } catch (error) {
+                                  console.error('Failed to update match gender:', error);
+                                  alert(`Failed to save gender: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                                  // Revert local state on error
+                                  setPlayerMatchGenders(prev => ({
+                                    ...prev,
+                                    [user.id]: match.bookings.find(b => b.user_id === user.id)?.match_gender || null
+                                  }));
+                                }
+                              }}
+                              className="ml-2 text-xs border border-gray-300 rounded px-2 py-1"
+                            >
+                              <option value="">Not Set</option>
+                              <option value="male">Male</option>
+                              <option value="female">Female</option>
+                            </select>
+                          </div>
+                        )}
                       </div>
                       <button
                         type="button"

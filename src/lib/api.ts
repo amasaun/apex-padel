@@ -195,6 +195,7 @@ export async function createMatch(match: Omit<Match, 'id' | 'created_at'>) {
 }
 
 export async function updateMatch(id: string, updates: Partial<Match>) {
+  // Try to update with select first
   const { data, error } = await supabase
     .from('matches')
     .update(updates)
@@ -202,7 +203,31 @@ export async function updateMatch(id: string, updates: Partial<Match>) {
     .select()
     .single();
 
-  if (error) throw error;
+  // If error and we're marking as private, try without select
+  // This handles the case where admin marks match private and can no longer see it
+  if (error && updates.is_private === true) {
+    console.error('Update with select failed:', error);
+    console.log('Trying update without select...');
+
+    const { error: updateError } = await supabase
+      .from('matches')
+      .update(updates)
+      .eq('id', id);
+
+    if (updateError) {
+      console.error('Update without select also failed:', updateError);
+      throw updateError;
+    }
+
+    console.log('Update without select succeeded');
+    // Return a partial match object
+    return { id, ...updates } as Match;
+  }
+
+  if (error) {
+    console.error('Update match error:', error);
+    throw error;
+  }
 
   const updatedMatch = data as Match;
 
@@ -401,6 +426,16 @@ export async function updateMatchPlayers(matchId: string, userIds: string[]) {
 
     if (insertError) throw insertError;
   }
+}
+
+export async function updateBookingMatchGender(matchId: string, userId: string, matchGender: 'male' | 'female' | null) {
+  const { error } = await supabase
+    .from('bookings')
+    .update({ match_gender: matchGender })
+    .eq('match_id', matchId)
+    .eq('user_id', userId);
+
+  if (error) throw error;
 }
 
 // ============================================

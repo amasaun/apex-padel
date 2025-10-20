@@ -1134,49 +1134,65 @@ export default function MatchDetail() {
         </div>
 
         {/* Tournament Gender Distribution */}
-        {match.is_tournament && (match.required_ladies || match.required_lads) && (
-          <div className="mb-8 p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
-            <div className="text-sm font-semibold text-gray-900 mb-3">Gender Distribution</div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {match.required_ladies && (
-                <div>
-                  <div className="flex justify-between text-sm text-gray-600 mb-2">
-                    <span>Ladies</span>
-                    <span className="font-semibold">
-                      {match.bookings.filter(b => b.user?.gender === 'female').length + guestBookings.filter(g => g.gender === 'female').length} / {match.required_ladies}
-                    </span>
+        {match.is_tournament && (match.required_ladies || match.required_lads) && (() => {
+          // Count females - prefer user gender, fall back to match_gender if user gender is null or "rather_not_say"
+          const femaleCount = match.bookings.filter(b => {
+            const userGender = b.user?.gender;
+            const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+            return displayGender === 'female';
+          }).length + guestBookings.filter(g => g.gender === 'female').length;
+
+          // Count males - prefer user gender, fall back to match_gender if user gender is null or "rather_not_say"
+          const maleCount = match.bookings.filter(b => {
+            const userGender = b.user?.gender;
+            const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+            return displayGender === 'male';
+          }).length + guestBookings.filter(g => g.gender === 'male').length;
+
+          return (
+            <div className="mb-8 p-4 bg-orange-50 rounded-lg border-2 border-orange-200">
+              <div className="text-sm font-semibold text-gray-900 mb-3">Gender Distribution</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {match.required_ladies && (
+                  <div>
+                    <div className="flex justify-between text-sm text-gray-600 mb-2">
+                      <span>Ladies</span>
+                      <span className="font-semibold">
+                        {femaleCount} / {match.required_ladies}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div
+                        className="bg-pink-500 h-3 rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(100, (femaleCount / match.required_ladies) * 100)}%`
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className="bg-pink-500 h-3 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, ((match.bookings.filter(b => b.user?.gender === 'female').length + guestBookings.filter(g => g.gender === 'female').length) / match.required_ladies) * 100)}%`
-                      }}
-                    />
+                )}
+                {match.required_lads && (
+                  <div>
+                    <div className="flex justify-between text-sm text-gray-600 mb-2">
+                      <span>Lads</span>
+                      <span className="font-semibold">
+                        {maleCount} / {match.required_lads}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div
+                        className="bg-blue-500 h-3 rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(100, (maleCount / match.required_lads) * 100)}%`
+                        }}
+                      />
+                    </div>
                   </div>
-                </div>
-              )}
-              {match.required_lads && (
-                <div>
-                  <div className="flex justify-between text-sm text-gray-600 mb-2">
-                    <span>Lads</span>
-                    <span className="font-semibold">
-                      {match.bookings.filter(b => b.user?.gender === 'male').length + guestBookings.filter(g => g.gender === 'male').length} / {match.required_lads}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className="bg-blue-500 h-3 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min(100, ((match.bookings.filter(b => b.user?.gender === 'male').length + guestBookings.filter(g => g.gender === 'male').length) / match.required_lads) * 100)}%`
-                      }}
-                    />
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
@@ -1221,22 +1237,33 @@ export default function MatchDetail() {
                       </div>
                     )}
                     {/* Gender badge for tournaments */}
-                    {match.is_tournament && (
-                      <div
-                        className={`absolute -top-1 -right-1 ${
-                          booking.user.gender === 'female' ? 'bg-pink-500' :
-                          booking.user.gender === 'male' ? 'bg-blue-500' :
-                          'bg-gray-400'
-                        } text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm text-xs`}
-                        title={
-                          booking.user.gender === 'female' ? 'Female' :
-                          booking.user.gender === 'male' ? 'Male' :
-                          'Rather not say'
-                        }
-                      >
-                        {booking.user.gender === 'female' ? '♀' : booking.user.gender === 'male' ? '♂' : '⚪'}
-                      </div>
-                    )}
+                    {match.is_tournament && (() => {
+                      // Prefer user gender, fall back to match_gender if user gender is null or "rather_not_say"
+                      const userGender = booking.user.gender;
+                      const displayGender = (userGender && userGender !== 'rather_not_say')
+                        ? userGender
+                        : booking.match_gender;
+
+                      // Don't show badge if no gender is set
+                      if (!displayGender) return null;
+
+                      return (
+                        <div
+                          className={`absolute -top-1 -right-1 ${
+                            displayGender === 'female' ? 'bg-pink-500' :
+                            displayGender === 'male' ? 'bg-blue-500' :
+                            'bg-gray-400'
+                          } text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm text-xs`}
+                          title={
+                            displayGender === 'female' ? 'Female' :
+                            displayGender === 'male' ? 'Male' :
+                            'Rather not say'
+                          }
+                        >
+                          {displayGender === 'female' ? '♀' : displayGender === 'male' ? '♂' : '⚪'}
+                        </div>
+                      );
+                    })()}
                     {/* Payment status badge */}
                     {showPaymentStatus && (
                       <button

@@ -758,20 +758,36 @@ export default function Matches() {
                                     </span>
                                   </div>
                                 )}
-                                {match.is_tournament && (match.required_ladies || match.required_lads) && (
-                                  <div className="flex items-center gap-2">
-                                    {match.required_ladies !== undefined && match.required_ladies > 0 && (
-                                      <span className="text-pink-600">
-                                        ♀ {match.bookings.filter((b: any) => b.user?.gender === 'female').length + (match.guest_bookings || []).filter((g: any) => g.gender === 'female').length}/{match.required_ladies} Ladies
-                                      </span>
-                                    )}
-                                    {match.required_lads !== undefined && match.required_lads > 0 && (
-                                      <span className="text-blue-600">
-                                        ♂ {match.bookings.filter((b: any) => b.user?.gender === 'male').length + (match.guest_bookings || []).filter((g: any) => g.gender === 'male').length}/{match.required_lads} Lads
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
+                                {match.is_tournament && (match.required_ladies || match.required_lads) && (() => {
+                                  // Count females - prefer user gender, fall back to match_gender if user gender is null or "rather_not_say"
+                                  const femaleCount = match.bookings.filter((b: any) => {
+                                    const userGender = b.user?.gender;
+                                    const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+                                    return displayGender === 'female';
+                                  }).length + (match.guest_bookings || []).filter((g: any) => g.gender === 'female').length;
+
+                                  // Count males - prefer user gender, fall back to match_gender if user gender is null or "rather_not_say"
+                                  const maleCount = match.bookings.filter((b: any) => {
+                                    const userGender = b.user?.gender;
+                                    const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+                                    return displayGender === 'male';
+                                  }).length + (match.guest_bookings || []).filter((g: any) => g.gender === 'male').length;
+
+                                  return (
+                                    <div className="flex items-center gap-2">
+                                      {match.required_ladies !== undefined && match.required_ladies > 0 && (
+                                        <span className="text-pink-600">
+                                          ♀ {femaleCount}/{match.required_ladies} Ladies
+                                        </span>
+                                      )}
+                                      {match.required_lads !== undefined && match.required_lads > 0 && (
+                                        <span className="text-blue-600">
+                                          ♂ {maleCount}/{match.required_lads} Lads
+                                        </span>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                                 {match.required_level !== null && match.required_level !== undefined && (
                                   <div className="flex items-center gap-1">
                                     <span>🎯</span>
@@ -1042,46 +1058,62 @@ export default function Matches() {
                   </div>
                   {match.is_tournament && (match.required_ladies || match.required_lads) && (
                     <div className="mt-3 space-y-2">
-                      {match.required_ladies !== undefined && match.required_ladies > 0 && (
-                        <div>
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-pink-600 font-medium flex items-center gap-1">
-                              <span>♀</span> Ladies
-                            </span>
-                            <span className={`${isFull ? 'text-gray-400' : 'text-gray-600'}`}>
-                              {match.bookings.filter((b: any) => b.user?.gender === 'female').length + (match.guest_bookings || []).filter((g: any) => g.gender === 'female').length}/{match.required_ladies}
-                            </span>
+                      {match.required_ladies !== undefined && match.required_ladies > 0 && (() => {
+                        const femaleCount = match.bookings.filter((b: any) => {
+                          const userGender = b.user?.gender;
+                          const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+                          return displayGender === 'female';
+                        }).length + (match.guest_bookings || []).filter((g: any) => g.gender === 'female').length;
+
+                        return (
+                          <div>
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="text-pink-600 font-medium flex items-center gap-1">
+                                <span>♀</span> Ladies
+                              </span>
+                              <span className={`${isFull ? 'text-gray-400' : 'text-gray-600'}`}>
+                                {femaleCount}/{match.required_ladies}
+                              </span>
+                            </div>
+                            <div className="w-full bg-pink-100 rounded-full h-1.5">
+                              <div
+                                className="bg-pink-500 h-1.5 rounded-full transition-all"
+                                style={{
+                                  width: `${Math.min(100, (femaleCount / match.required_ladies) * 100)}%`
+                                }}
+                              />
+                            </div>
                           </div>
-                          <div className="w-full bg-pink-100 rounded-full h-1.5">
-                            <div
-                              className="bg-pink-500 h-1.5 rounded-full transition-all"
-                              style={{
-                                width: `${Math.min(100, ((match.bookings.filter((b: any) => b.user?.gender === 'female').length + (match.guest_bookings || []).filter((g: any) => g.gender === 'female').length) / match.required_ladies) * 100)}%`
-                              }}
-                            />
+                        );
+                      })()}
+                      {match.required_lads !== undefined && match.required_lads > 0 && (() => {
+                        const maleCount = match.bookings.filter((b: any) => {
+                          const userGender = b.user?.gender;
+                          const displayGender = (userGender && userGender !== 'rather_not_say') ? userGender : b.match_gender;
+                          return displayGender === 'male';
+                        }).length + (match.guest_bookings || []).filter((g: any) => g.gender === 'male').length;
+
+                        return (
+                          <div>
+                            <div className="flex items-center justify-between text-xs mb-1">
+                              <span className="text-blue-600 font-medium flex items-center gap-1">
+                                <span>♂</span> Lads
+                              </span>
+                              <span className={`${isFull ? 'text-gray-400' : 'text-gray-600'}`}>
+                                {maleCount}/{match.required_lads}
+                              </span>
+                            </div>
+                            <div className="w-full bg-blue-100 rounded-full h-1.5">
+                              <div
+                                className="bg-blue-500 h-1.5 rounded-full transition-all"
+                                style={{
+                                  width: `${Math.min(100, (maleCount / match.required_lads) * 100)}%`
+                                }}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      )}
-                      {match.required_lads !== undefined && match.required_lads > 0 && (
-                        <div>
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-blue-600 font-medium flex items-center gap-1">
-                              <span>♂</span> Lads
-                            </span>
-                            <span className={`${isFull ? 'text-gray-400' : 'text-gray-600'}`}>
-                              {match.bookings.filter((b: any) => b.user?.gender === 'male').length + (match.guest_bookings || []).filter((g: any) => g.gender === 'male').length}/{match.required_lads}
-                            </span>
-                          </div>
-                          <div className="w-full bg-blue-100 rounded-full h-1.5">
-                            <div
-                              className="bg-blue-500 h-1.5 rounded-full transition-all"
-                              style={{
-                                width: `${Math.min(100, ((match.bookings.filter((b: any) => b.user?.gender === 'male').length + (match.guest_bookings || []).filter((g: any) => g.gender === 'male').length) / match.required_lads) * 100)}%`
-                              }}
-                            />
-                          </div>
-                        </div>
-                      )}
+                        );
+                      })()}
                     </div>
                   )}
                   {match.is_tournament && match.prize_first && match.prize_first > 0 && (
@@ -1166,23 +1198,34 @@ export default function Matches() {
                               </svg>
                             </div>
                           )}
-                          {/* Gender badge for tournaments - only show if no payment status */}
-                          {match.is_tournament && !showPaymentStatus && (
-                            <div
-                              className={`absolute -top-1 -right-1 ${
-                                booking.user.gender === 'female' ? 'bg-pink-500' :
-                                booking.user.gender === 'male' ? 'bg-blue-500' :
-                                'bg-gray-400'
-                              } text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm text-xs`}
-                              title={
-                                booking.user.gender === 'female' ? 'Female' :
-                                booking.user.gender === 'male' ? 'Male' :
-                                'Rather not say'
-                              }
-                            >
-                              {booking.user.gender === 'female' ? '♀' : booking.user.gender === 'male' ? '♂' : '⚪'}
-                            </div>
-                          )}
+                          {/* Gender badge for tournaments */}
+                          {match.is_tournament && !showPaymentStatus && (() => {
+                            // Prefer user gender, fall back to match_gender if user gender is null or "rather_not_say"
+                            const userGender = booking.user.gender;
+                            const displayGender = (userGender && userGender !== 'rather_not_say')
+                              ? userGender
+                              : booking.match_gender;
+
+                            // Don't show badge if no gender is set
+                            if (!displayGender) return null;
+
+                            return (
+                              <div
+                                className={`absolute -top-1 -right-1 ${
+                                  displayGender === 'female' ? 'bg-pink-500' :
+                                  displayGender === 'male' ? 'bg-blue-500' :
+                                  'bg-gray-400'
+                                } text-white rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm text-xs`}
+                                title={
+                                  displayGender === 'female' ? 'Female' :
+                                  displayGender === 'male' ? 'Male' :
+                                  'Rather not say'
+                                }
+                              >
+                                {displayGender === 'female' ? '♀' : displayGender === 'male' ? '♂' : '⚪'}
+                              </div>
+                            );
+                          })()}
                           {/* Payment status badge */}
                           {showPaymentStatus && (
                             <div className={`absolute -top-1 -right-1 ${hasPaid ? 'bg-green-500' : 'bg-yellow-500'} rounded-full p-0.5 border-2 border-white shadow-sm`} title={hasPaid ? 'Paid' : 'Pending'}>
