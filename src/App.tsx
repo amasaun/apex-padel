@@ -40,11 +40,7 @@ function App() {
               />
               <Route
                 path="/profile/:id"
-                element={
-                  <ProtectedRoute>
-                    <Profile />
-                  </ProtectedRoute>
-                }
+                element={<Profile />}
               />
               <Route
                 path="/profile/:id/edit"

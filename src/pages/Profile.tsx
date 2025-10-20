@@ -4,9 +4,18 @@ import { getRankingColor, getRankingLabel, formatRanking } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { User } from '@/types';
 import UserAvatar from '@/components/UserAvatar';
+import { getCurrentUserProfile } from '@/lib/auth';
 
 export default function Profile() {
   const { id } = useParams<{ id: string }>();
+
+  // Get current user to check if authenticated
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: getCurrentUserProfile,
+  });
+
+  const isAuthenticated = !!currentUser;
 
   // Fetch user from Supabase
   const { data: user, isLoading, error } = useQuery({
@@ -23,7 +32,7 @@ export default function Profile() {
     enabled: !!id,
   });
 
-  // Fetch playing partners (people booked in the same matches)
+  // Fetch playing partners (people booked in the same matches) - only if authenticated
   const { data: playingPartners } = useQuery({
     queryKey: ['playing-partners', id],
     queryFn: async () => {
@@ -63,7 +72,7 @@ export default function Profile() {
       return Array.from(partnerCounts.values())
         .sort((a, b) => b.count - a.count);
     },
-    enabled: !!id,
+    enabled: !!id && isAuthenticated,
   });
 
   if (isLoading) {
@@ -118,43 +127,45 @@ export default function Profile() {
           </div>
         </div>
 
-        <div className="border-t border-gray-200 pt-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Stats</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="text-sm text-gray-600 mb-1">Member Since</div>
-              <div className="text-2xl font-bold text-gray-900">
-                {new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
+        {isAuthenticated && (
+          <div className="border-t border-gray-200 pt-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Stats</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="text-sm text-gray-600 mb-1">Member Since</div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}
+                </div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="text-sm text-gray-600 mb-1">Contact</div>
+                {user.share_contact_info ? (
+                  <div className="space-y-1">
+                    {user.email && (
+                      <div className="text-sm font-medium text-gray-900">
+                        📧 {user.email}
+                      </div>
+                    )}
+                    {user.phone && (
+                      <div className="text-sm font-medium text-gray-900">
+                        📱 {user.phone}
+                      </div>
+                    )}
+                    {!user.email && !user.phone && (
+                      <div className="text-sm font-medium text-gray-900">
+                        Not provided
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm font-medium text-gray-900">
+                    Private
+                  </div>
+                )}
               </div>
             </div>
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="text-sm text-gray-600 mb-1">Contact</div>
-              {user.share_contact_info ? (
-                <div className="space-y-1">
-                  {user.email && (
-                    <div className="text-sm font-medium text-gray-900">
-                      📧 {user.email}
-                    </div>
-                  )}
-                  {user.phone && (
-                    <div className="text-sm font-medium text-gray-900">
-                      📱 {user.phone}
-                    </div>
-                  )}
-                  {!user.email && !user.phone && (
-                    <div className="text-sm font-medium text-gray-900">
-                      Not provided
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-sm font-medium text-gray-900">
-                  Private
-                </div>
-              )}
-            </div>
           </div>
-        </div>
+        )}
 
         {(user.venmo_username || user.zelle_handle) && (
           <div className="border-t border-gray-200 pt-6 mt-6">
@@ -200,7 +211,7 @@ export default function Profile() {
           </div>
         )}
 
-        {playingPartners && playingPartners.length > 0 && (
+        {isAuthenticated && playingPartners && playingPartners.length > 0 && (
           <div className="border-t border-gray-200 pt-6 mt-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Played With</h2>
             <div className="flex flex-wrap gap-4 justify-center">
@@ -241,11 +252,21 @@ export default function Profile() {
           </div>
         )}
 
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-blue-800 text-sm">
-            💡 Match history and detailed stats coming soon!
-          </p>
-        </div>
+        {isAuthenticated && (
+          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-800 text-sm">
+              💡 Match history and detailed stats coming soon!
+            </p>
+          </div>
+        )}
+
+        {!isAuthenticated && (
+          <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-blue-800 text-sm">
+              <Link to="/signup" className="font-medium underline">Sign up</Link> or <Link to="/login" className="font-medium underline">log in</Link> to see more details and match history.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
