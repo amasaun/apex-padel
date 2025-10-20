@@ -16,16 +16,32 @@ export default function ResetPassword() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
 
-      // Check if this is a recovery session (has recovery token)
+      console.log('Reset Password - Session check:', session);
+
+      // Check if we have a session (recovery sessions are still valid sessions)
       if (session) {
+        // We have a valid session, allow password reset
         setValidToken(true);
       } else {
+        // No session means the link expired or is invalid
         setValidToken(false);
         setError('Invalid or expired reset link. Please request a new one.');
       }
     };
 
     checkSession();
+
+    // Also listen for auth state changes in case the session is set after component mounts
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Reset Password - Auth event:', event);
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+        setValidToken(true);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -26,7 +26,16 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     checkAuth();
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🛡️ ProtectedRoute - Auth event:', event);
+
+      // Don't update auth state during password recovery
+      // This prevents redirects when user clicks password reset link
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('🔐 Password recovery detected, not updating auth state');
+        return;
+      }
+
       setIsAuthenticated(!!session);
     });
 

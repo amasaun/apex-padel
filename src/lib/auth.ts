@@ -107,9 +107,11 @@ export async function getCurrentUserProfile(): Promise<User | null> {
  * Reset password
  */
 export async function resetPassword(email: string) {
-  const appUrl = import.meta.env.VITE_APP_URL || window.location.origin;
+  // Always use window.location.origin to ensure correct URL in all environments
+  // Production: https://www.playapexpadel.com
+  // Local dev: http://localhost:5174 (or whatever port Vite uses)
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${appUrl}/reset-password`,
+    redirectTo: `${window.location.origin}/reset-password`,
   });
 
   if (error) throw error;
