@@ -176,11 +176,30 @@ export default function Profile() {
                 {user.venmo_username && (
                   <button
                     onClick={() => {
+                      // Clean username - remove @ prefix if present
+                      const cleanUsername = user.venmo_username!.replace(/^@/, '');
+                      const note = 'Padel';
+
                       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
                       if (isMobile) {
-                        window.location.href = `venmo://pay?txn=charge&recipients=${user.venmo_username}`;
+                        // Use correct deep link format for Venmo app
+                        // venmo://paycharge opens payment screen, txn=pay is for sending money
+                        // No amount parameter - user will fill in the amount
+                        const venmoUrl = `venmo://paycharge?txn=pay&recipients=${cleanUsername}&note=${encodeURIComponent(note)}`;
+
+                        // Try to open Venmo app
+                        window.location.href = venmoUrl;
+
+                        // Fallback to web version if app doesn't open within 2 seconds
+                        setTimeout(() => {
+                          const venmoWebUrl = `https://venmo.com/${cleanUsername}?txn=pay&note=${encodeURIComponent(note)}`;
+                          window.open(venmoWebUrl, '_blank');
+                        }, 2000);
                       } else {
-                        window.open(`https://venmo.com/${user.venmo_username}`, '_blank');
+                        // Use web URL on desktop - no amount, user enters it
+                        const venmoWebUrl = `https://venmo.com/${cleanUsername}?txn=pay&note=${encodeURIComponent(note)}`;
+                        window.open(venmoWebUrl, '_blank');
                       }
                     }}
                     className="flex-1 flex items-center justify-center gap-3 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition shadow-sm"
