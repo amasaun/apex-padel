@@ -279,16 +279,28 @@ export default function MatchDetail() {
     const matchInfo = `${match?.title || 'Padel Match'} on ${formatDate(match!.date)}`;
     const amount = perPersonCost.toFixed(2);
 
+    // Clean username - remove @ prefix if present
+    const cleanUsername = matchCreator.venmo_username.replace(/^@/, '');
+
     // Check if on mobile device
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 
     if (isMobile) {
-      // Use deep link on mobile (opens Venmo app)
-      const venmoUrl = `venmo://pay?txn=charge&recipients=${matchCreator.venmo_username}&amount=${amount}&note=${encodeURIComponent(matchInfo)}`;
+      // Use correct deep link format for Venmo app
+      // venmo://paycharge opens the payment screen, txn=pay is for sending money (not requesting)
+      const venmoUrl = `venmo://paycharge?txn=pay&recipients=${cleanUsername}&amount=${amount}&note=${encodeURIComponent(matchInfo)}`;
+
+      // Try to open Venmo app
       window.location.href = venmoUrl;
+
+      // Fallback to web version if app doesn't open within 2 seconds
+      setTimeout(() => {
+        const venmoWebUrl = `https://venmo.com/${cleanUsername}?txn=pay&amount=${amount}&note=${encodeURIComponent(matchInfo)}`;
+        window.open(venmoWebUrl, '_blank');
+      }, 2000);
     } else {
-      // Use web URL on desktop
-      const venmoWebUrl = `https://venmo.com/${matchCreator.venmo_username}?txn=charge&amount=${amount}&note=${encodeURIComponent(matchInfo)}`;
+      // Use web URL on desktop (changed to txn=pay to match mobile)
+      const venmoWebUrl = `https://venmo.com/${cleanUsername}?txn=pay&amount=${amount}&note=${encodeURIComponent(matchInfo)}`;
       window.open(venmoWebUrl, '_blank');
     }
   };
