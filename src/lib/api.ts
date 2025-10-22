@@ -332,12 +332,14 @@ export async function checkTournamentGenderQuota(
   if (effectiveGender === 'female') {
     if (match.required_ladies && currentLadies >= match.required_ladies) {
       result.canBook = false;
-      result.reason = `Ladies spots are full (${currentLadies}/${match.required_ladies}). Lads spots available (${currentLads}/${match.required_lads || 0}).`;
+      const ladsRemaining = (match.required_lads || 0) - currentLads;
+      result.reason = `Ladies spots available: FULL, Lads spots available: ${ladsRemaining > 0 ? ladsRemaining : 'FULL'}`;
     }
   } else if (effectiveGender === 'male') {
     if (match.required_lads && currentLads >= match.required_lads) {
       result.canBook = false;
-      result.reason = `Lads spots are full (${currentLads}/${match.required_lads}). Ladies spots available (${currentLadies}/${match.required_ladies || 0}).`;
+      const ladiesRemaining = (match.required_ladies || 0) - currentLadies;
+      result.reason = `Lads spots available: FULL, Ladies spots available: ${ladiesRemaining > 0 ? ladiesRemaining : 'FULL'}`;
     }
   } else {
     // Gender is 'rather_not_say' or null - for tournaments, we need to know gender

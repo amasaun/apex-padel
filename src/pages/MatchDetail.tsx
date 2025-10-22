@@ -1218,7 +1218,7 @@ export default function MatchDetail() {
               return 0;
             }).map((booking) => {
               const hasPaid = isBookingPaid(booking.id);
-              const showPaymentStatus = match.price_per_player != null && match.price_per_player > 0 && (isCreator || isBooked);
+              const showPaymentStatus = match.price_per_player != null && match.price_per_player > 0 && (isCreator || isBooked || isAdmin);
 
               return (
                 <Link
@@ -1276,35 +1276,6 @@ export default function MatchDetail() {
                         </div>
                       );
                     })()}
-                    {/* Payment status badge */}
-                    {showPaymentStatus && (
-                      <button
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (!isCreator) return;
-
-                          const newStatus = !hasPaid;
-                          if (perPersonCost) {
-                            await createOrUpdatePayment(booking.id, perPersonCost, newStatus);
-                            queryClient.invalidateQueries({ queryKey: ['payments', match?.id] });
-                          }
-                        }}
-                        disabled={!isCreator}
-                        className={`absolute -top-1 -right-1 ${hasPaid ? 'bg-green-500' : 'bg-yellow-500'} rounded-full p-1 border-2 border-white shadow-sm ${isCreator ? 'cursor-pointer hover:opacity-80' : ''}`}
-                        title={isCreator ? 'Click to toggle payment status' : hasPaid ? 'Paid' : 'Pending'}
-                      >
-                        {hasPaid ? (
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        ) : (
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </button>
-                    )}
                     {/* Instant tooltip */}
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
                       <div className="bg-gray-900 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
@@ -1364,7 +1335,7 @@ export default function MatchDetail() {
             {/* Guest Players */}
             {guestBookings.map((guestBooking) => {
               const hasGuestPaid = isGuestBookingPaid(guestBooking.id);
-              const showPaymentStatus = match.price_per_player != null && match.price_per_player > 0 && (isCreator || isBooked);
+              const showPaymentStatus = match.price_per_player != null && match.price_per_player > 0 && (isCreator || isBooked || isAdmin);
 
               return (
                 <div
@@ -1393,35 +1364,6 @@ export default function MatchDetail() {
                       >
                         {guestBooking.gender === 'female' ? '♀' : guestBooking.gender === 'male' ? '♂' : '⚪'}
                       </div>
-                    )}
-                    {/* Payment status badge for guests */}
-                    {showPaymentStatus && (
-                      <button
-                        onClick={async (e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (!isCreator) return;
-
-                          const newStatus = !hasGuestPaid;
-                          if (perPersonCost) {
-                            await createOrUpdateGuestPayment(guestBooking.id, perPersonCost, newStatus);
-                            queryClient.invalidateQueries({ queryKey: ['guestPayments', match?.id] });
-                          }
-                        }}
-                        disabled={!isCreator}
-                        className={`absolute -top-1 -right-1 ${hasGuestPaid ? 'bg-green-500' : 'bg-yellow-500'} rounded-full p-1 border-2 border-white shadow-sm ${isCreator ? 'cursor-pointer hover:opacity-80' : ''}`}
-                        title={isCreator ? 'Click to toggle payment status' : hasGuestPaid ? 'Paid' : 'Pending'}
-                      >
-                        {hasGuestPaid ? (
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        ) : (
-                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </button>
                     )}
                     {/* Instant tooltip */}
                     <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-100 pointer-events-none z-10">
@@ -1524,30 +1466,62 @@ export default function MatchDetail() {
         )}
 
 
-        {/* Creator Payment View */}
-        {match.price_per_player != null && match.price_per_player > 0 && (isCreator || isAdmin) && (
+        {/* Payment Summary - Show to creators, admins, and bookers */}
+        {match.price_per_player != null && match.price_per_player > 0 && (isCreator || isAdmin || isBooked) && (
           <div className="mt-6 p-6 bg-gray-50 border border-gray-200 rounded-lg">
             <h3 className="text-lg font-semibold text-gray-900 mb-3">Payment Summary</h3>
-            <div className="mb-4">
-              <p className="text-sm text-gray-600">Price Per Player:</p>
-              <p className="text-2xl font-bold text-gray-900">💵${match.price_per_player?.toFixed(2) || '0.00'}</p>
-              <p className="text-sm text-gray-600 mt-1">
-                {bookings.length + guestBookings.length} of {match.max_players} slots booked
-              </p>
-            </div>
-            <div className="mb-4 pt-4 border-t border-gray-300">
-              <p className="text-sm text-gray-600">Total Amount Marked as Paid:</p>
-              <p className="text-2xl font-bold text-green-600">
-                ${(() => {
-                  const paidCount = allPayments.filter(p => p.marked_as_paid).length +
-                                    allGuestPayments.filter(p => p.marked_as_paid).length;
-                  return ((match.price_per_player || 0) * paidCount).toFixed(2);
-                })()}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">
-                {allPayments.filter(p => p.marked_as_paid).length + allGuestPayments.filter(p => p.marked_as_paid).length} of {bookings.length + guestBookings.length} players marked as paid
-              </p>
-            </div>
+
+            {/* Full details only for creators and admins */}
+            {(isCreator || isAdmin) && (
+              <>
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600">Price Per Player:</p>
+                  <p className="text-2xl font-bold text-gray-900">💵${match.price_per_player?.toFixed(2) || '0.00'}</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {bookings.length + guestBookings.length} of {match.max_players} slots booked
+                  </p>
+                </div>
+                <div className="mb-4 pt-4 border-t border-gray-300">
+                  <p className="text-sm text-gray-600">Total Amount Marked as Paid:</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    ${(() => {
+                      const paidCount = allPayments.filter(p => p.marked_as_paid).length +
+                                        allGuestPayments.filter(p => p.marked_as_paid).length;
+                      return ((match.price_per_player || 0) * paidCount).toFixed(2);
+                    })()}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {allPayments.filter(p => p.marked_as_paid).length + allGuestPayments.filter(p => p.marked_as_paid).length} of {bookings.length + guestBookings.length} players marked as paid
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* View for regular bookers */}
+            {!isCreator && !isAdmin && isBooked && (
+              <div>
+                <div className="mb-4">
+                  <p className="text-sm text-gray-600">Price Per Player:</p>
+                  <p className="text-2xl font-bold text-gray-900">💵${match.price_per_player?.toFixed(2) || '0.00'}</p>
+                </div>
+                <div className="pt-4 border-t border-gray-300">
+                  <p className="text-sm text-gray-600 mb-3">Your Payment Status:</p>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={currentUserPayment?.marked_as_paid || false}
+                      onChange={handleTogglePayment}
+                      disabled={togglePaymentMutation.isPending}
+                      className="w-5 h-5 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Mark as paid {currentUserPayment?.marked_as_paid && '✓'}
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
+
             {isCreator && !currentUser?.venmo_username && !currentUser?.zelle_handle && (
               <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <p className="text-sm text-yellow-800">

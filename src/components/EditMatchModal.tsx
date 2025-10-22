@@ -254,11 +254,13 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
 
       // Check if adding this guest would exceed quota
       if (newGuestGender === 'female' && formData.requiredLadies && currentLadies >= formData.requiredLadies) {
-        alert(`Cannot add female guest. Ladies spots are full (${currentLadies}/${formData.requiredLadies}). Lads spots available (${currentLads}/${formData.requiredLads || 0}).`);
+        const ladsRemaining = (formData.requiredLads || 0) - currentLads;
+        alert(`Cannot add female guest. Ladies spots available: FULL, Lads spots available: ${ladsRemaining > 0 ? ladsRemaining : 'FULL'}`);
         return;
       }
       if (newGuestGender === 'male' && formData.requiredLads && currentLads >= formData.requiredLads) {
-        alert(`Cannot add male guest. Lads spots are full (${currentLads}/${formData.requiredLads}). Ladies spots available (${currentLadies}/${formData.requiredLadies || 0}).`);
+        const ladiesRemaining = (formData.requiredLadies || 0) - currentLadies;
+        alert(`Cannot add male guest. Lads spots available: FULL, Ladies spots available: ${ladiesRemaining > 0 ? ladiesRemaining : 'FULL'}`);
         return;
       }
     }
@@ -307,11 +309,13 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
 
       // Check if changing to this gender would exceed quota
       if (gender === 'female' && formData.requiredLadies && currentLadies >= formData.requiredLadies) {
-        alert(`Cannot change to female. Ladies spots are full (${currentLadies}/${formData.requiredLadies}). Lads spots available (${currentLads}/${formData.requiredLads || 0}).`);
+        const ladsRemaining = (formData.requiredLads || 0) - currentLads;
+        alert(`Cannot change to female. Ladies spots available: FULL, Lads spots available: ${ladsRemaining > 0 ? ladsRemaining : 'FULL'}`);
         return;
       }
       if (gender === 'male' && formData.requiredLads && currentLads >= formData.requiredLads) {
-        alert(`Cannot change to male. Lads spots are full (${currentLads}/${formData.requiredLads}). Ladies spots available (${currentLadies}/${formData.requiredLadies || 0}).`);
+        const ladiesRemaining = (formData.requiredLadies || 0) - currentLadies;
+        alert(`Cannot change to male. Lads spots available: FULL, Ladies spots available: ${ladiesRemaining > 0 ? ladiesRemaining : 'FULL'}`);
         return;
       }
     }
@@ -382,11 +386,13 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
 
             // Check if adding this player would exceed quota
             if (effectiveGender === 'female' && formData.requiredLadies && currentLadies >= formData.requiredLadies) {
-              alert(`Cannot add ${player.name}. Ladies spots are full (${currentLadies}/${formData.requiredLadies}). Lads spots available (${currentLads}/${formData.requiredLads || 0}).`);
+              const ladsRemaining = (formData.requiredLads || 0) - currentLads;
+              alert(`Cannot add ${player.name}. Ladies spots available: FULL, Lads spots available: ${ladsRemaining > 0 ? ladsRemaining : 'FULL'}`);
               return;
             }
             if (effectiveGender === 'male' && formData.requiredLads && currentLads >= formData.requiredLads) {
-              alert(`Cannot add ${player.name}. Lads spots are full (${currentLads}/${formData.requiredLads}). Ladies spots available (${currentLadies}/${formData.requiredLadies || 0}).`);
+              const ladiesRemaining = (formData.requiredLadies || 0) - currentLadies;
+              alert(`Cannot add ${player.name}. Lads spots available: FULL, Ladies spots available: ${ladiesRemaining > 0 ? ladiesRemaining : 'FULL'}`);
               return;
             }
             if (!effectiveGender) {
@@ -897,11 +903,13 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
 
                                   // Check if changing to this gender would exceed quota
                                   if (genderValue === 'female' && formData.requiredLadies && currentLadies >= formData.requiredLadies) {
-                                    alert(`Cannot change to female. Ladies spots are full (${currentLadies}/${formData.requiredLadies}). Lads spots available (${currentLads}/${formData.requiredLads || 0}).`);
+                                    const ladsRemaining = (formData.requiredLads || 0) - currentLads;
+                                    alert(`Cannot change to female. Ladies spots available: FULL, Lads spots available: ${ladsRemaining > 0 ? ladsRemaining : 'FULL'}`);
                                     return;
                                   }
                                   if (genderValue === 'male' && formData.requiredLads && currentLads >= formData.requiredLads) {
-                                    alert(`Cannot change to male. Lads spots are full (${currentLads}/${formData.requiredLads}). Ladies spots available (${currentLadies}/${formData.requiredLadies || 0}).`);
+                                    const ladiesRemaining = (formData.requiredLadies || 0) - currentLadies;
+                                    alert(`Cannot change to male. Lads spots available: FULL, Ladies spots available: ${ladiesRemaining > 0 ? ladiesRemaining : 'FULL'}`);
                                     return;
                                   }
                                 }
