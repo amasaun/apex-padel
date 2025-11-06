@@ -215,13 +215,16 @@ export default function EditMatchModal({ isOpen, onClose, onSuccess, match }: Ed
       await updateMatchPlayers(match.id, selectedPlayers);
 
       setErrors({});
+
+      // Call onSuccess first to trigger data refresh
+      onSuccess();
+
+      // Then close the modal
       onClose();
 
       // If admin marked someone else's match as private, navigate to matches list
       if (markingAsPrivate && isNotCreator) {
         navigate('/matches');
-      } else {
-        onSuccess();
       }
     } catch (error: any) {
       setErrors({ submit: error.message || 'Failed to update match' });

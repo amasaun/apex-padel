@@ -37,7 +37,19 @@ export async function createUser(user: Omit<User, 'id' | 'created_at'>) {
   return data as User;
 }
 
-export async function updateUser(id: string, updates: Partial<User>) {
+export async function updateUser(id: string, updates: {
+  name?: string;
+  email?: string;
+  phone?: string | null;
+  photo_url?: string | null;
+  ranking?: string;
+  is_admin?: boolean;
+  invited_by_code?: string;
+  share_contact_info?: boolean;
+  gender?: 'female' | 'male' | 'rather_not_say';
+  venmo_username?: string | null;
+  zelle_handle?: string | null;
+}) {
   const { data, error } = await supabase
     .from('users')
     .update(updates)

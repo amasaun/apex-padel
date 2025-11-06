@@ -1539,7 +1539,12 @@ export default function MatchDetail() {
         <EditMatchModal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          onSuccess={() => refetch()}
+          onSuccess={async () => {
+            // Invalidate all related queries to force a fresh fetch
+            await queryClient.invalidateQueries({ queryKey: ['match', id] });
+            await queryClient.invalidateQueries({ queryKey: ['payments', id] });
+            await queryClient.invalidateQueries({ queryKey: ['guestPayments', id] });
+          }}
           match={match}
         />
       )}

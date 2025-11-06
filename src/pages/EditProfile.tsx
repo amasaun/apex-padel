@@ -78,12 +78,12 @@ export default function EditProfile() {
     try {
       await updateUser(user.id, {
         name: formData.name,
-        phone: formData.phone || undefined,
+        phone: formData.phone || null,
         ranking: formData.ranking,
-        photo_url: formData.photo_url || undefined,
+        photo_url: formData.photo_url || null,
         share_contact_info: formData.share_contact_info,
-        venmo_username: formData.venmo_username || undefined,
-        zelle_handle: formData.zelle_handle || undefined,
+        venmo_username: formData.venmo_username || null,
+        zelle_handle: formData.zelle_handle || null,
         gender: formData.gender,
       });
 
@@ -137,13 +137,27 @@ export default function EditProfile() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Profile Photo URL (optional)
             </label>
-            <input
-              type="url"
-              value={formData.photo_url}
-              onChange={(e) => setFormData({ ...formData, photo_url: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              placeholder="https://example.com/photo.jpg"
-            />
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={formData.photo_url}
+                onChange={(e) => setFormData({ ...formData, photo_url: e.target.value })}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                placeholder="https://example.com/photo.jpg"
+              />
+              {formData.photo_url && (
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, photo_url: '' })}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-xs text-gray-500">
+              Add a link to your photo, or leave blank to use your initials
+            </p>
             {formData.photo_url && (
               <div className="mt-3">
                 <p className="text-sm text-gray-600 mb-2">Preview:</p>
